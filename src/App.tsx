@@ -3,6 +3,8 @@ import { AsciiCanvas } from "@/components/ascii-canvas"
 const oscLink =
   "\u001b]8;;https://github.com/IonicaBizau/anser\u001b\\OSC 8 href link\u001b]8;;\u001b\\"
 
+const oscTooltip = "\u001b]8;;SHA256\u001b\\[校验成功]\u001b]8;;\u001b\\"
+
 const sampleOutput = [
   "\u001b[1;38;2;37;99;235mANSI / OSC style surface\u001b[0m",
   "",
@@ -13,6 +15,7 @@ const sampleOutput = [
   "\u001b[1mbold text\u001b[0m  \u001b[3mitalic text\u001b[0m  \u001b[9mdelete / strikethrough\u001b[0m  \u001b[4munderline\u001b[0m",
   "",
   `href: ${oscLink}`,
+  `tooltip metadata: ${oscTooltip}`,
   "",
   "\u001b[38;2;100;116;139m──────────────────────────────────────── 分割线 / 次要文字 / 边框\u001b[0m",
   "\u001b[1;38;2;255;255;255;48;2;37;99;235m 主要按钮 \u001b[0m  \u001b[1;38;2;255;255;255;48;2;236;72;153m 高亮标签 \u001b[0m",

@@ -106,7 +106,6 @@ const getAnsiStyle = (style: AnsiStyle): CSSProperties => {
     fontWeight: decorations.has("bold") ? 700 : undefined,
     fontStyle: decorations.has("italic") ? "italic" : undefined,
     opacity: decorations.has("dim") ? 0.72 : undefined,
-    cursor: style.href ? "pointer" : undefined,
     textDecoration: [
       decorations.has("underline") || style.href ? "underline" : "",
       decorations.has("strikethrough") ? "line-through" : "",
@@ -179,6 +178,8 @@ const isUnmodifiedPointer = (event: PointerEvent<HTMLElement>) =>
 
 const isLinkTarget = (target: EventTarget | null) =>
   target instanceof Element && Boolean(target.closest("a[href]"))
+
+const isNavigableHref = (href: string) => /^(https?:|mailto:|tel:)/i.test(href)
 
 export function AsciiCanvas({
   content,
@@ -419,7 +420,15 @@ export function AsciiCanvas({
                   const key = `${rowIndex}-${run.startCol}-${getStyleKey(run.style)}`
                   const style = getAnsiStyle(run.style)
 
-                  return run.style.href ? (
+                  if (!run.style.href) {
+                    return (
+                      <span key={key} style={style}>
+                        {run.text}
+                      </span>
+                    )
+                  }
+
+                  return isNavigableHref(run.style.href) ? (
                     <a
                       href={run.style.href}
                       key={key}
@@ -431,7 +440,7 @@ export function AsciiCanvas({
                       {run.text}
                     </a>
                   ) : (
-                    <span key={key} style={style}>
+                    <span key={key} style={style} title={run.style.href}>
                       {run.text}
                     </span>
                   )
