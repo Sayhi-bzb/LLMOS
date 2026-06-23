@@ -34,6 +34,7 @@ interface CellPosition {
 }
 
 type SelectionMode = "linear" | "block"
+type OscFieldKind = "link" | "note" | "label"
 
 interface CellSelection {
   anchor: CellPosition
@@ -71,11 +72,11 @@ const defaultMetrics: TextMetrics = {
 const stylesEqual = (left: AnsiStyle, right: AnsiStyle) =>
   left.foreground === right.foreground &&
   left.background === right.background &&
-  left.href === right.href &&
+  left.label === right.label &&
   left.decorations.join("|") === right.decorations.join("|")
 
 const getStyleKey = (style: AnsiStyle) =>
-  [style.foreground ?? "", style.background ?? "", style.href ?? "", ...style.decorations].join("|")
+  [style.foreground ?? "", style.background ?? "", style.label ?? "", ...style.decorations].join("|")
 
 const cellsToRuns = (cells: AnsiCell[]): CellRun[] => {
   const runs: CellRun[] = []
@@ -107,7 +108,7 @@ const getAnsiStyle = (style: AnsiStyle): CSSProperties => {
     fontStyle: decorations.has("italic") ? "italic" : undefined,
     opacity: decorations.has("dim") ? 0.72 : undefined,
     textDecoration: [
-      decorations.has("underline") || style.href ? "underline" : "",
+      decorations.has("underline") || style.label ? "underline" : "",
       decorations.has("strikethrough") ? "line-through" : "",
     ]
       .filter(Boolean)
@@ -179,7 +180,17 @@ const isUnmodifiedPointer = (event: PointerEvent<HTMLElement>) =>
 const isLinkTarget = (target: EventTarget | null) =>
   target instanceof Element && Boolean(target.closest("a[href]"))
 
-const isNavigableHref = (href: string) => /^(https?:|mailto:|tel:)/i.test(href)
+const classifyOscField = (value: string): OscFieldKind => {
+  if (/^(https?:|mailto:|tel:)/i.test(value)) {
+    return "link"
+  }
+
+  if (value.startsWith("@")) {
+    return "label"
+  }
+
+  return "note"
+}
 
 export function AsciiCanvas({
   content,
@@ -420,7 +431,7 @@ export function AsciiCanvas({
                   const key = `${rowIndex}-${run.startCol}-${getStyleKey(run.style)}`
                   const style = getAnsiStyle(run.style)
 
-                  if (!run.style.href) {
+                  if (!run.style.label) {
                     return (
                       <span key={key} style={style}>
                         {run.text}
@@ -428,19 +439,25 @@ export function AsciiCanvas({
                     )
                   }
 
-                  return isNavigableHref(run.style.href) ? (
-                    <a
-                      href={run.style.href}
-                      key={key}
-                      onClick={handleLinkClick}
-                      rel="noreferrer"
-                      style={style}
-                      target="_blank"
-                    >
-                      {run.text}
-                    </a>
-                  ) : (
-                    <span key={key} style={style} title={run.style.href}>
+                  const fieldKind = classifyOscField(run.style.label)
+
+                  if (fieldKind === "link") {
+                    return (
+                      <a
+                        href={run.style.label}
+                        key={key}
+                        onClick={handleLinkClick}
+                        rel="noreferrer"
+                        style={style}
+                        target="_blank"
+                      >
+                        {run.text}
+                      </a>
+                    )
+                  }
+
+                  return (
+                    <span key={key} style={style} title={run.style.label}>
                       {run.text}
                     </span>
                   )

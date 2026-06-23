@@ -14,7 +14,7 @@ export interface AnsiStyle {
   foreground?: string
   background?: string
   decorations: AnsiTextDecoration[]
-  href?: string
+  label?: string
 }
 
 export interface AnsiRun {
@@ -31,7 +31,7 @@ export interface AnsiCell {
 
 interface OscSegment {
   text: string
-  href?: string
+  label?: string
 }
 
 const osc8Pattern = /\x1b\]8;[^;]*;([^\x1b\x07]*)(?:\x1b\\|\x07)([\s\S]*?)\x1b\]8;[^;]*;(?:\x1b\\|\x07)/g
@@ -41,7 +41,7 @@ const emptyStyle = (): AnsiStyle => ({ decorations: [] })
 const cloneStyle = (style: AnsiStyle): AnsiStyle => ({
   ...(style.foreground ? { foreground: style.foreground } : {}),
   ...(style.background ? { background: style.background } : {}),
-  ...(style.href ? { href: style.href } : {}),
+  ...(style.label ? { label: style.label } : {}),
   decorations: [...style.decorations],
 })
 
@@ -53,7 +53,7 @@ const toRgb = (value: string | null | undefined) => {
   return `rgb(${value})`
 }
 
-const toStyle = (entry: Anser.AnserJsonEntry, href?: string): AnsiStyle => {
+const toStyle = (entry: Anser.AnserJsonEntry, label?: string): AnsiStyle => {
   const foreground = toRgb(entry.fg_truecolor || entry.fg)
   const background = toRgb(entry.bg_truecolor || entry.bg)
   const decorations = [...new Set(entry.decorations ?? [])] as AnsiTextDecoration[]
@@ -61,7 +61,7 @@ const toStyle = (entry: Anser.AnserJsonEntry, href?: string): AnsiStyle => {
   return {
     ...(foreground ? { foreground } : {}),
     ...(background ? { background } : {}),
-    ...(href ? { href } : {}),
+    ...(label ? { label } : {}),
     decorations,
   }
 }
@@ -77,7 +77,7 @@ const splitOsc8Segments = (content: string): OscSegment[] => {
       segments.push({ text: content.slice(lastIndex, matchIndex) })
     }
 
-    segments.push({ href: match[1], text: match[2] })
+    segments.push({ label: match[1], text: match[2] })
     lastIndex = matchIndex + match[0].length
   }
 
@@ -120,7 +120,7 @@ export const parseAnsiToLines = (content: string): AnsiLine[] => {
 
       appendRunToLines(lines, {
         text: entry.content,
-        style: toStyle(entry, segment.href),
+        style: toStyle(entry, segment.label),
       })
     }
   }

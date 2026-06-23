@@ -1,12 +1,13 @@
 import { AsciiCanvas } from "@/components/ascii-canvas"
 
-const oscLink =
-  "\u001b]8;;https://github.com/IonicaBizau/anser\u001b\\OSC 8 href link\u001b]8;;\u001b\\"
+const urlLabel =
+  "\u001b]8;;https://github.com/IonicaBizau/anser\u001b\\OSC 8 URL label\u001b]8;;\u001b\\"
 
-const oscTooltip = "\u001b]8;;SHA256\u001b\\[校验成功]\u001b]8;;\u001b\\"
+const entityLabel = "\u001b]8;;@e1\u001b\\[实体 e1]\u001b]8;;\u001b\\"
+const checksumLabel = "\u001b]8;;SHA256\u001b\\[校验成功]\u001b]8;;\u001b\\"
 
 const sampleOutput = [
-  "\u001b[1;38;2;37;99;235mANSI / OSC style surface\u001b[0m",
+  "\u001b[1;38;2;37;99;235mANSI / OSC label surface\u001b[0m",
   "",
   "\u001b[31mcolor: basic red\u001b[0m  \u001b[38;5;39mcolor: 256 palette blue\u001b[0m",
   "\u001b[38;2;37;99;235mforeground truecolor / 当前选中项\u001b[0m",
@@ -14,8 +15,9 @@ const sampleOutput = [
   "",
   "\u001b[1mbold text\u001b[0m  \u001b[3mitalic text\u001b[0m  \u001b[9mdelete / strikethrough\u001b[0m  \u001b[4munderline\u001b[0m",
   "",
-  `href: ${oscLink}`,
-  `tooltip metadata: ${oscTooltip}`,
+  `label:url     ${urlLabel}`,
+  `label:entity  ${entityLabel}`,
+  `label:hash    ${checksumLabel}`,
   "",
   "\u001b[38;2;100;116;139m──────────────────────────────────────── 分割线 / 次要文字 / 边框\u001b[0m",
   "\u001b[1;38;2;255;255;255;48;2;37;99;235m 主要按钮 \u001b[0m  \u001b[1;38;2;255;255;255;48;2;236;72;153m 高亮标签 \u001b[0m",
@@ -32,7 +34,7 @@ export function App() {
             ANSI ASCII Canvas
           </h1>
           <p className="max-w-2xl text-sm text-muted-foreground">
-            SGR styles and OSC 8 links are parsed into styled cells on a
+            SGR styles and OSC 8 labels are parsed into styled cells on a
             selectable monospace grid.
           </p>
         </div>
