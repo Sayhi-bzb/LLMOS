@@ -291,6 +291,10 @@ function App() {
     submitPrompt(input)
   }
 
+  const handleSubmitShortcut = () => {
+    submitPrompt(input)
+  }
+
   const handleResetThread = () => {
     if (isLoading) {
       stop()
@@ -319,7 +323,7 @@ function App() {
   }
 
   return (
-    <main className="min-h-svh bg-background p-6 text-foreground">
+    <main className="flex min-h-svh flex-col bg-background p-6 text-foreground">
       <LlmConfigPanel
         configOpen={configOpen}
         configDraft={configDraft}
@@ -350,6 +354,7 @@ function App() {
         onInputChange={setInput}
         onPromptHref={submitPrompt}
         onSubmit={handleSubmit}
+        onSubmitShortcut={handleSubmitShortcut}
         onResetThread={handleResetThread}
         onStop={handleStop}
       />
@@ -358,6 +363,11 @@ function App() {
 }
 
 export default App
+
+
+
+
+
 
 
 

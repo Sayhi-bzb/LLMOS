@@ -3,14 +3,14 @@ export type CanvasHref =
   | { kind: "external"; href: string }
   | { kind: "unknown"; href: string }
 
-export const promptHrefPrefix = "prompt://"
+const promptHrefPrefix = "prompt://"
 
 const externalHrefPattern = /^(https?:|mailto:|tel:)/i
 const promptMarkdownLinkPattern = /\]\((prompt:\/\/[^)\r\n]+)\)/g
 
-export const isPromptHref = (href: string) => href.startsWith(promptHrefPrefix)
+const isPromptHref = (href: string) => href.startsWith(promptHrefPrefix)
 
-export const isExternalHref = (href: string) => externalHrefPattern.test(href)
+const isExternalHref = (href: string) => externalHrefPattern.test(href)
 
 export const isCanvasLinkHref = (href: string) => isPromptHref(href) || isExternalHref(href)
 
@@ -45,7 +45,7 @@ export const isMarkdownAllowedHref = (
   fallbackValidate: (href: string) => boolean,
 ) => isPromptHref(href) || fallbackValidate(href)
 
-export const encodePromptHref = (href: string) => {
+const encodePromptHref = (href: string) => {
   const prompt = href.slice(promptHrefPrefix.length)
 
   try {
@@ -59,3 +59,4 @@ export const normalizeMarkdownPromptLinks = (content: string) =>
   content.replace(promptMarkdownLinkPattern, (_match, href: string) =>
     `](${encodePromptHref(href)})`,
   )
+

@@ -1,75 +1,50 @@
-import { Loader2, RotateCcw, Save, Send, Square } from "lucide-react"
-import type { FormEvent } from "react"
+import { Loader2, RotateCcw, Send, Square } from "lucide-react"
+import type { FormEvent, KeyboardEvent } from "react"
 
 import { Button } from "@/components/ui/button"
 
 interface PromptConsoleProps {
-  systemPromptDraft: string
-  hasUnsavedSystemPrompt: boolean
-  isSavingSystemPrompt: boolean
   input: string
   isLoading: boolean
   error?: Error
   canSubmit: boolean
-  onSystemPromptChange: (value: string) => void
-  onSaveSystemPrompt: () => void
   onInputChange: (value: string) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
+  onSubmitShortcut: () => void
   onResetThread: () => void
   onStop: () => void
 }
 
 export function PromptConsole({
-  systemPromptDraft,
-  hasUnsavedSystemPrompt,
-  isSavingSystemPrompt,
   input,
   isLoading,
   error,
   canSubmit,
-  onSystemPromptChange,
-  onSaveSystemPrompt,
   onInputChange,
   onSubmit,
+  onSubmitShortcut,
   onResetThread,
   onStop,
 }: PromptConsoleProps) {
+  const handleInputKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== "Enter" || !event.ctrlKey) {
+      return
+    }
+
+    event.preventDefault()
+
+    if (canSubmit) {
+      onSubmitShortcut()
+    }
+  }
+
   return (
     <form className="flex flex-col gap-4 bg-card p-3 text-card-foreground" onSubmit={onSubmit}>
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <label className="text-sm font-medium" htmlFor="system-prompt">
-            System prompt
-          </label>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">
-              {isSavingSystemPrompt ? "Saving" : hasUnsavedSystemPrompt ? "Unsaved changes" : "Saved"}
-            </span>
-            <Button
-              disabled={!hasUnsavedSystemPrompt || isSavingSystemPrompt}
-              onClick={onSaveSystemPrompt}
-              type="button"
-              variant="secondary"
-            >
-              <Save className="size-4" aria-hidden="true" />
-              Save
-            </Button>
-          </div>
-        </div>
-        <textarea
-          className="min-h-20 resize-y rounded-md border border-input bg-background px-3 py-2 text-sm font-normal leading-6 outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={isLoading}
-          id="system-prompt"
-          onChange={(event) => onSystemPromptChange(event.target.value)}
-          placeholder="Optional behavior or output format instructions"
-          value={systemPromptDraft}
-        />
-      </div>
-
       <textarea
         className="min-h-24 resize-y rounded-md border border-input bg-background px-3 py-2 text-sm leading-6 outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-60"
         disabled={isLoading}
         onChange={(event) => onInputChange(event.target.value)}
+        onKeyDown={handleInputKeyDown}
         placeholder="Ask the model for ANSI/plain text output..."
         value={input}
       />
