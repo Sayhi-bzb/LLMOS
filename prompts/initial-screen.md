@@ -1,7 +1,13 @@
-**<span fg-foreground>LLMOS 系统启动程序</span>**
+                                                <span fg-danger>██╗     ██╗     ███╗   ███╗ ██████╗ ███████╗</span>
+                                                <span fg-danger>██║     ██║     ████╗ ████║██╔═══██╗██╔════╝</span>
+                                                <span fg-danger>██║     ██║     ██╔████╔██║██║   ██║███████╗</span>
+                                                <span fg-danger>██║     ██║     ██║╚██╔╝██║██║   ██║╚════██║</span>
+                                                <span fg-danger>███████╗███████╗██║ ╚═╝ ██║╚██████╔╝███████║</span>
+                                                <span fg-danger>╚══════╝╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚══════╝</span>
 
-<span bg-surface>系统核心加载中...</span>
-<span bg-surface>版本: LLMOS v1.0.2026-STABLE</span>
-<span bg-surface>状态: 准备就绪</span>
+                                                <span fg-muted>Please select your preferred language:</span>
+                                                <span fg-muted>请选择您的系统语言：</span>
 
-[<span fg-on-accent bg-accent> 启动图形界面 </span>](prompt://启动图形界面) [<span fg-on-muted bg-muted> 查看系统日志 </span>](prompt://查看系统日志) [<span fg-on-danger bg-danger> 进入救援模式 </span>](prompt://进入救援模式并列出可用操作)
+                                                [English](prompt://Use English as the system language)                        [中文](prompt://使用中文作为系统语言)
+
+                                                <span fg-muted>[</span><span fg-success>============================></span><span fg-muted>-----------] 75%</span>

@@ -177,8 +177,6 @@ const parseStyleAttribute = (attributes: string): StyleFrame => {
   return frame
 }
 
-const stripHtmlTags = (content: string) => content.replace(/<[^>]*>/g, "")
-
 const parseHtmlInlineToken = (content: string): HtmlInlineToken => {
   const trimmed = content.trim()
 
@@ -441,51 +439,60 @@ const parseTable = (tokens: Token[], startIndex: number) => {
   }
 }
 
-const appendLines = (target: RichTextLine[], nextLines: RichTextLine[]) => {
-  for (const line of nextLines) {
-    if (target.length === 1 && target[0].length === 0) {
-      target[0] = line
-      continue
-    }
+const tableSeparatorPattern = /^\s*\|?(?:\s*:?-{3,}:?\s*\|)+\s*:?-{3,}:?\s*\|?\s*$/
+const tableRowPattern = /^\s*\|.*\|\s*$/
 
-    target.push(line)
+const isTableStart = (lines: string[], index: number) =>
+  tableRowPattern.test(lines[index] ?? "") && tableSeparatorPattern.test(lines[index + 1] ?? "")
+
+const findTableEnd = (lines: string[], startIndex: number) => {
+  let endIndex = startIndex + 2
+
+  while (endIndex < lines.length && tableRowPattern.test(lines[endIndex])) {
+    endIndex += 1
   }
+
+  return endIndex
+}
+
+const parseInlineLine = (line: string): RichTextLine => {
+  const tokens: Token[] = []
+  markdown.inline.parse(line, markdown, {}, tokens)
+
+  const parsedLines: RichTextLine[] = [[]]
+  const stack: StyleFrame[] = []
+  consumeInlineTokens(parsedLines, stack, tokens)
+
+  return parsedLines[0] ?? []
+}
+
+const parseTableBlock = (block: string) => {
+  const tokens = markdown.parse(block, {})
+  const tableOpenIndex = tokens.findIndex((token) => token.type === "table_open")
+
+  if (tableOpenIndex === -1) {
+    return block.split("\n").map(parseInlineLine)
+  }
+
+  return parseTable(tokens, tableOpenIndex).lines
 }
 
 export const parseMarkdownToRichLines = (content: string): RichTextLine[] => {
-  const lines: RichTextLine[] = [[]]
-  const stack: StyleFrame[] = []
-  const tokens = markdown.parse(normalizeMarkdownPromptLinks(content), {})
+  const normalizedContent = normalizeMarkdownPromptLinks(content)
+  const sourceLines = normalizedContent.split(/\r?\n/)
+  const lines: RichTextLine[] = []
 
-  for (let index = 0; index < tokens.length; index += 1) {
-    const token = tokens[index]
-
-    if (token.type === "table_open") {
-      const table = parseTable(tokens, index)
-      appendLines(lines, table.lines)
-      index = table.endIndex
-
-      if (tokens[index + 1]) {
-        lines.push([])
-      }
+  for (let index = 0; index < sourceLines.length; index += 1) {
+    if (isTableStart(sourceLines, index)) {
+      const tableEnd = findTableEnd(sourceLines, index)
+      lines.push(...parseTableBlock(sourceLines.slice(index, tableEnd).join("\n")))
+      index = tableEnd - 1
       continue
     }
 
-    if (token.type === "inline" && token.children) {
-      consumeInlineTokens(lines, stack, token.children)
-      continue
-    }
-
-    if (token.type === "html_block") {
-      appendText(lines, stack, stripHtmlTags(token.content))
-      continue
-    }
-
-    if (token.type === "paragraph_close" && tokens[index + 1]) {
-      appendText(lines, stack, "\n")
-    }
+    lines.push(parseInlineLine(sourceLines[index]))
   }
 
-  return lines
+  return lines.length > 0 ? lines : [[]]
 }
 
