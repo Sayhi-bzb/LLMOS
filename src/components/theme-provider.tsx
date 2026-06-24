@@ -219,7 +219,7 @@ export function ThemeProvider({
   )
 }
 
-export const useTheme = () => {
+const useTheme = () => {
   const context = React.useContext(ThemeProviderContext)
 
   if (context === undefined) {
@@ -228,3 +228,4 @@ export const useTheme = () => {
 
   return context
 }
+

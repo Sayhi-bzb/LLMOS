@@ -2,12 +2,12 @@ import { useEffect, useState, type RefObject } from "react"
 
 import type { TextMetrics, ViewportMetrics } from "@/components/ascii-canvas/types"
 
-export const defaultMetrics: TextMetrics = {
+const defaultMetrics: TextMetrics = {
   charWidth: 8,
   lineHeight: 18,
 }
 
-export const defaultViewportMetrics: ViewportMetrics = {
+const defaultViewportMetrics: ViewportMetrics = {
   width: 0,
   height: 0,
   paddingLeft: 16,
@@ -85,3 +85,4 @@ function measureViewport(viewport: HTMLDivElement): ViewportMetrics {
 function parsePixelValue(value: string) {
   return Number.parseFloat(value) || 0
 }
+

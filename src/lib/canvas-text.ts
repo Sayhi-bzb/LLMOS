@@ -31,9 +31,9 @@ export interface CanvasCell {
   sourceText?: string
 }
 
-export const emptyCanvasStyle = (): CanvasStyle => ({ decorations: [] })
+const emptyCanvasStyle = (): CanvasStyle => ({ decorations: [] })
 
-export const cloneCanvasStyle = (style: CanvasStyle): CanvasStyle => ({
+const cloneCanvasStyle = (style: CanvasStyle): CanvasStyle => ({
   ...(style.foreground ? { foreground: style.foreground } : {}),
   ...(style.background ? { background: style.background } : {}),
   ...(style.label ? { label: style.label } : {}),
@@ -149,3 +149,5 @@ export const canvasLinesToCells = (
 
   return rows
 }
+
+

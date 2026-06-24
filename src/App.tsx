@@ -26,7 +26,7 @@ const getFrameTitle = (prompt: string) => {
   return title.length > 40 ? `${title.slice(0, 40)}...` : title
 }
 
-export function App() {
+function App() {
   const [savedSystemPrompt, setSavedSystemPrompt] = useState("")
   const [systemPromptDraft, setSystemPromptDraft] = useState("")
   const [configOpen, setConfigOpen] = useState(false)
@@ -354,5 +354,6 @@ export function App() {
 }
 
 export default App
+
 
 

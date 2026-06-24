@@ -34,7 +34,7 @@ const richStyleToCanvasStyle = (style: RichTextStyle): CanvasStyle => ({
   ],
 })
 
-export const richTextLinesToCanvasLines = (lines: RichTextLine[]): CanvasLine[] =>
+const richTextLinesToCanvasLines = (lines: RichTextLine[]): CanvasLine[] =>
   lines.map((line) =>
     line.map((run) => ({
       text: run.text,
@@ -43,10 +43,10 @@ export const richTextLinesToCanvasLines = (lines: RichTextLine[]): CanvasLine[] 
     })),
   )
 
-export const parseMarkdownToCanvasLines = (content: string): CanvasLine[] =>
+const parseMarkdownToCanvasLines = (content: string): CanvasLine[] =>
   richTextLinesToCanvasLines(parseMarkdownToRichLines(content))
 
-export const parseAnsiToCanvasLines = (content: string): CanvasLine[] => parseAnsiToLines(content)
+const parseAnsiToCanvasLines = (content: string): CanvasLine[] => parseAnsiToLines(content)
 
 export const parseCanvasContent = (
   content: string,
@@ -58,3 +58,4 @@ export const parseCanvasContent = (
 
   return parseAnsiToCanvasLines(content)
 }
+
