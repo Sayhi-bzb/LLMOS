@@ -27,16 +27,361 @@ export type AnsiLine = AnsiRun[]
 export interface AnsiCell {
   char: string
   style: AnsiStyle
+  width?: number
+  continuation?: boolean
 }
+
 
 interface OscSegment {
   text: string
   label?: string
 }
 
-const osc8Pattern = /\x1b\]8;[^;]*;([^\x1b\x07]*)(?:\x1b\\|\x07)([\s\S]*?)\x1b\]8;[^;]*;(?:\x1b\\|\x07)/g
+interface ControlToken {
+  end: number
+  text?: string
+  label?: string
+  partial?: boolean
+}
+
+interface BareSgrBoundary {
+  index: number
+  partial: boolean
+}
+
+const standardOsc8Prefix = "\x1b]8;"
+const standardCsiPrefix = "\x1b["
+const bareOsc8Prefix = "]8;"
+
+const isSgrParamChar = (char: string) => /[\d;]/.test(char)
+
+const isCsiFinalByte = (char: string) => {
+  const code = char.charCodeAt(0)
+  return code >= 0x40 && code <= 0x7e
+}
+
+const parseOsc8Payload = (payload: string) => {
+  const separatorIndex = payload.indexOf(";")
+
+  if (separatorIndex === -1) {
+    return undefined
+  }
+
+  return payload.slice(separatorIndex + 1)
+}
+
+const findStandardTerminator = (content: string, startIndex: number) => {
+  const escapeTerminatorIndex = content.indexOf("\x1b\\", startIndex)
+  const bellTerminatorIndex = content.indexOf("\x07", startIndex)
+
+  if (escapeTerminatorIndex === -1) {
+    return bellTerminatorIndex === -1
+      ? null
+      : { index: bellTerminatorIndex, end: bellTerminatorIndex + 1 }
+  }
+
+  if (bellTerminatorIndex === -1 || escapeTerminatorIndex < bellTerminatorIndex) {
+    return { index: escapeTerminatorIndex, end: escapeTerminatorIndex + 2 }
+  }
+
+  return { index: bellTerminatorIndex, end: bellTerminatorIndex + 1 }
+}
+
+const parseBareSgrToken = (content: string, index: number): ControlToken | null => {
+  if (content[index] !== "[") {
+    return null
+  }
+
+  let cursor = index + 1
+
+  while (cursor < content.length) {
+    const char = content[cursor]
+
+    if (char === "m") {
+      return {
+        end: cursor + 1,
+        text: `\x1b[${content.slice(index + 1, cursor)}m`,
+      }
+    }
+
+    if (!isSgrParamChar(char)) {
+      return null
+    }
+
+    cursor += 1
+  }
+
+  return { end: content.length, partial: true }
+}
+
+const findBareSgrBoundary = (
+  content: string,
+  startIndex: number,
+): BareSgrBoundary | null => {
+  let searchIndex = startIndex
+
+  while (searchIndex < content.length) {
+    const index = content.indexOf("[", searchIndex)
+
+    if (index === -1) {
+      return null
+    }
+
+    const token = parseBareSgrToken(content, index)
+
+    if (token?.text) {
+      return { index, partial: false }
+    }
+
+    if (token?.partial) {
+      return { index, partial: true }
+    }
+
+    searchIndex = index + 1
+  }
+
+  return null
+}
+
+const parseStandardCsiToken = (content: string, index: number): ControlToken | null => {
+  if (!content.startsWith(standardCsiPrefix, index)) {
+    return null
+  }
+
+  let cursor = index + standardCsiPrefix.length
+
+  while (cursor < content.length) {
+    if (isCsiFinalByte(content[cursor])) {
+      return { end: cursor + 1, text: content.slice(index, cursor + 1) }
+    }
+
+    cursor += 1
+  }
+
+  return { end: content.length, partial: true }
+}
+
+const parseStandardOsc8Token = (content: string, index: number): ControlToken | null => {
+  if (!content.startsWith(standardOsc8Prefix, index)) {
+    return null
+  }
+
+  const payloadStart = index + standardOsc8Prefix.length
+  const terminator = findStandardTerminator(content, payloadStart)
+
+  if (!terminator) {
+    return { end: content.length, partial: true }
+  }
+
+  const uri = parseOsc8Payload(content.slice(payloadStart, terminator.index))
+
+  if (uri === undefined) {
+    return { end: terminator.end, partial: true }
+  }
+
+  return { end: terminator.end, label: uri }
+}
+const parseBareOsc8CloseToken = (content: string, uriStart: number): ControlToken => {
+  if (content.startsWith("[0m]", uriStart)) {
+    return { end: uriStart + 4, label: "" }
+  }
+
+  if (content.startsWith("[0m", uriStart)) {
+    return { end: uriStart + 3, label: "" }
+  }
+
+  if (content.startsWith("\\", uriStart) || content.startsWith("]", uriStart)) {
+    return { end: uriStart + 1, label: "" }
+  }
+
+  return { end: uriStart, label: "" }
+}
+
+const parseBareOsc8Token = (
+  content: string,
+  index: number,
+  currentLabel?: string,
+): ControlToken | null => {
+  if (!content.startsWith(bareOsc8Prefix, index)) {
+    return null
+  }
+
+  const paramsStart = index + bareOsc8Prefix.length
+  const separatorIndex = content.indexOf(";", paramsStart)
+
+  if (separatorIndex === -1) {
+    return { end: content.length, partial: true }
+  }
+
+  const uriStart = separatorIndex + 1
+  const isCloseCandidate = separatorIndex === paramsStart
+
+  if (isCloseCandidate) {
+    if (
+      uriStart >= content.length ||
+      content[uriStart] === "[" ||
+      content[uriStart] === "\\" ||
+      content[uriStart] === "]" ||
+      /\s/.test(content[uriStart]) ||
+      (currentLabel && content[uriStart] !== "/")
+    ) {
+      return parseBareOsc8CloseToken(content, uriStart)
+    }
+  }
+
+  const backslashIndex = content.indexOf("\\", uriStart)
+  const sgrBoundary = findBareSgrBoundary(content, uriStart)
+
+  if (
+    backslashIndex !== -1 &&
+    (!sgrBoundary || backslashIndex < sgrBoundary.index)
+  ) {
+    return {
+      end: backslashIndex + 1,
+      label: content.slice(uriStart, backslashIndex),
+    }
+  }
+
+  if (sgrBoundary?.partial) {
+    return { end: content.length, partial: true }
+  }
+
+  if (sgrBoundary) {
+    return {
+      end: sgrBoundary.index,
+      label: content.slice(uriStart, sgrBoundary.index),
+    }
+  }
+
+  return { end: content.length, partial: true }
+}
+
+const parseEscControlToken = (content: string, index: number): ControlToken | null => {
+  if (content[index] !== "\x1b") {
+    return null
+  }
+
+  const tail = content.slice(index)
+
+  if (standardCsiPrefix.startsWith(tail) || standardOsc8Prefix.startsWith(tail)) {
+    return { end: content.length, partial: true }
+  }
+
+  return null
+}
+
+const parseControlToken = (
+  content: string,
+  index: number,
+  currentLabel?: string,
+): ControlToken | null =>
+  parseStandardCsiToken(content, index) ??
+  parseStandardOsc8Token(content, index) ??
+  parseEscControlToken(content, index) ??
+  parseBareOsc8Token(content, index, currentLabel) ??
+  parseBareSgrToken(content, index)
+
+const splitOsc8Segments = (content: string): OscSegment[] => {
+  const segments: OscSegment[] = []
+  let currentLabel: string | undefined
+  let cursor = 0
+  let buffer = ""
+  let bufferHasText = false
+  let trailingControls = ""
+
+  const pushSegment = (keepTrailingControls = false) => {
+    if (buffer) {
+      segments.push(currentLabel ? { text: buffer, label: currentLabel } : { text: buffer })
+    }
+
+    buffer = keepTrailingControls ? trailingControls : ""
+    bufferHasText = false
+
+    if (!keepTrailingControls) {
+      trailingControls = ""
+    }
+  }
+
+  const appendControl = (text: string) => {
+    buffer += text
+    trailingControls += text
+  }
+
+  const appendText = (text: string) => {
+    buffer += text
+    bufferHasText = true
+    trailingControls = ""
+  }
+
+  while (cursor < content.length) {
+    const token = parseControlToken(content, cursor, currentLabel)
+
+    if (token?.partial) {
+      break
+    }
+
+    if (token?.label !== undefined) {
+      if (bufferHasText) {
+        pushSegment(true)
+      }
+
+      currentLabel = token.label || undefined
+      cursor = token.end
+      continue
+    }
+
+    if (token?.text) {
+      appendControl(token.text)
+      cursor = token.end
+      continue
+    }
+
+    const codePoint = content.codePointAt(cursor)
+    const text = codePoint === undefined ? content[cursor] : String.fromCodePoint(codePoint)
+    appendText(text)
+    cursor += text.length
+  }
+
+  if (buffer) {
+    pushSegment()
+  }
+
+  return segments.length > 0 ? segments : [{ text: "" }]
+}
 
 const emptyStyle = (): AnsiStyle => ({ decorations: [] })
+
+const isCombiningCodePoint = (codePoint: number) =>
+  (codePoint >= 0x0300 && codePoint <= 0x036f) ||
+  (codePoint >= 0x1ab0 && codePoint <= 0x1aff) ||
+  (codePoint >= 0x1dc0 && codePoint <= 0x1dff) ||
+  (codePoint >= 0x20d0 && codePoint <= 0x20ff) ||
+  (codePoint >= 0xfe20 && codePoint <= 0xfe2f)
+
+const isWideCodePoint = (codePoint: number) =>
+  codePoint >= 0x1100 &&
+  (codePoint <= 0x115f ||
+    codePoint === 0x2329 ||
+    codePoint === 0x232a ||
+    (codePoint >= 0x2e80 && codePoint <= 0xa4cf && codePoint !== 0x303f) ||
+    (codePoint >= 0xac00 && codePoint <= 0xd7a3) ||
+    (codePoint >= 0xf900 && codePoint <= 0xfaff) ||
+    (codePoint >= 0xfe10 && codePoint <= 0xfe19) ||
+    (codePoint >= 0xfe30 && codePoint <= 0xfe6f) ||
+    (codePoint >= 0xff00 && codePoint <= 0xff60) ||
+    (codePoint >= 0xffe0 && codePoint <= 0xffe6) ||
+    (codePoint >= 0x1f300 && codePoint <= 0x1faff) ||
+    (codePoint >= 0x20000 && codePoint <= 0x3fffd))
+
+const getCellWidth = (char: string) => {
+  const codePoint = char.codePointAt(0) ?? 0
+
+  if (isCombiningCodePoint(codePoint)) {
+    return 0
+  }
+
+  return isWideCodePoint(codePoint) ? 2 : 1
+}
 
 const cloneStyle = (style: AnsiStyle): AnsiStyle => ({
   ...(style.foreground ? { foreground: style.foreground } : {}),
@@ -66,28 +411,6 @@ const toStyle = (entry: Anser.AnserJsonEntry, label?: string): AnsiStyle => {
   }
 }
 
-const splitOsc8Segments = (content: string): OscSegment[] => {
-  const segments: OscSegment[] = []
-  let lastIndex = 0
-
-  for (const match of content.matchAll(osc8Pattern)) {
-    const matchIndex = match.index ?? 0
-
-    if (matchIndex > lastIndex) {
-      segments.push({ text: content.slice(lastIndex, matchIndex) })
-    }
-
-    segments.push({ label: match[1], text: match[2] })
-    lastIndex = matchIndex + match[0].length
-  }
-
-  if (lastIndex < content.length) {
-    segments.push({ text: content.slice(lastIndex) })
-  }
-
-  return segments.length > 0 ? segments : [{ text: content }]
-}
-
 const splitRunIntoLines = (run: AnsiRun): AnsiLine[] => {
   const parts = run.text.split("\n")
 
@@ -106,6 +429,7 @@ const appendRunToLines = (lines: AnsiLine[], run: AnsiRun) => {
     currentLine.push(...line)
   })
 }
+
 
 export const parseAnsiToLines = (content: string): AnsiLine[] => {
   const lines: AnsiLine[] = [[]]
@@ -128,40 +452,84 @@ export const parseAnsiToLines = (content: string): AnsiLine[] => {
   return lines
 }
 
-export const stripAnsi = (content: string) => Anser.ansiToText(content)
+
+export const stripAnsi = (content: string) =>
+  splitOsc8Segments(content)
+    .map((segment) => Anser.ansiToText(segment.text))
+    .join("")
 
 export const ansiLinesToCells = (
   lines: AnsiLine[],
   cols: number,
   minRows = lines.length,
 ): AnsiCell[][] => {
-  const rowCount = Math.max(minRows, lines.length, 1)
-
-  return Array.from({ length: rowCount }, (_, rowIndex) => {
-    const cells: AnsiCell[] = Array.from({ length: cols }, () => ({
+  const safeCols = Math.max(1, cols)
+  const createEmptyRow = (): AnsiCell[] =>
+    Array.from({ length: safeCols }, () => ({
       char: " ",
       style: emptyStyle(),
     }))
+  const rows: AnsiCell[][] = []
+
+  const appendRow = () => {
+    const nextRow = createEmptyRow()
+    rows.push(nextRow)
+    return nextRow
+  }
+
+  for (const line of lines) {
+    let cells = appendRow()
     let colIndex = 0
 
-    for (const run of lines[rowIndex] ?? []) {
+    for (const run of line) {
       for (const char of Array.from(run.text)) {
-        if (colIndex >= cols) {
-          break
+        const cellWidth = Math.min(getCellWidth(char), safeCols)
+
+        if (cellWidth === 0) {
+          const previousIndex = Math.max(0, colIndex - 1)
+          cells[previousIndex] = {
+            ...cells[previousIndex],
+            char: `${cells[previousIndex].char}${char}`,
+          }
+          continue
+        }
+
+        if (colIndex > 0 && colIndex + cellWidth > safeCols) {
+          cells = appendRow()
+          colIndex = 0
         }
 
         cells[colIndex] = {
           char,
           style: cloneStyle(run.style),
+          width: cellWidth,
         }
-        colIndex += 1
-      }
 
-      if (colIndex >= cols) {
-        break
+        for (let offset = 1; offset < cellWidth; offset += 1) {
+          cells[colIndex + offset] = {
+            char: "",
+            style: cloneStyle(run.style),
+            continuation: true,
+          }
+        }
+
+        colIndex += cellWidth
+
+        if (colIndex >= safeCols) {
+          cells = appendRow()
+          colIndex = 0
+        }
       }
     }
 
-    return cells
-  })
+    if (colIndex === 0 && rows.length > 1 && line.length > 0) {
+      rows.pop()
+    }
+  }
+
+  while (rows.length < Math.max(minRows, 1)) {
+    rows.push(createEmptyRow())
+  }
+
+  return rows
 }
