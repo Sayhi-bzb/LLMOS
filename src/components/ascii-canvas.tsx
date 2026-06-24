@@ -47,6 +47,15 @@ interface TextMetrics {
   lineHeight: number
 }
 
+interface ViewportMetrics {
+  width: number
+  height: number
+  paddingLeft: number
+  paddingRight: number
+  paddingTop: number
+  paddingBottom: number
+}
+
 interface CellRun {
   text: string
   style: AnsiStyle
@@ -68,6 +77,17 @@ const defaultMetrics: TextMetrics = {
   charWidth: 8,
   lineHeight: 18,
 }
+
+const defaultViewportMetrics: ViewportMetrics = {
+  width: 0,
+  height: 0,
+  paddingLeft: 16,
+  paddingRight: 16,
+  paddingTop: 16,
+  paddingBottom: 16,
+}
+
+const bottomThreshold = 24
 
 const stylesEqual = (left: AnsiStyle, right: AnsiStyle) =>
   left.foreground === right.foreground &&
@@ -192,27 +212,59 @@ const classifyOscField = (value: string): OscFieldKind => {
   return "note"
 }
 
+const parsePixelValue = (value: string) => Number.parseFloat(value) || 0
+
+const measureViewport = (viewport: HTMLDivElement): ViewportMetrics => {
+  const style = window.getComputedStyle(viewport)
+
+  return {
+    width: viewport.clientWidth,
+    height: viewport.clientHeight,
+    paddingLeft: parsePixelValue(style.paddingLeft),
+    paddingRight: parsePixelValue(style.paddingRight),
+    paddingTop: parsePixelValue(style.paddingTop),
+    paddingBottom: parsePixelValue(style.paddingBottom),
+  }
+}
+
 export function AsciiCanvas({
   content,
   className,
+  autoScroll = true,
   cols,
   minRows = 18,
-  maxColumns = 96,
+  maxColumns,
 }: AsciiCanvasProps) {
-  const gridCols = cols ?? maxColumns
   const viewportRef = useRef<HTMLDivElement>(null)
   const measureRef = useRef<HTMLSpanElement>(null)
   const isDraggingRef = useRef(false)
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null)
   const didDragRef = useRef(false)
+  const shouldStickToBottomRef = useRef(true)
   const [metrics, setMetrics] = useState<TextMetrics>(defaultMetrics)
+  const [viewportMetrics, setViewportMetrics] = useState<ViewportMetrics>(
+    defaultViewportMetrics,
+  )
   const [selection, setSelection] = useState<CellSelection | null>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
 
+  const availableWidth = Math.max(
+    0,
+    viewportMetrics.width - viewportMetrics.paddingLeft - viewportMetrics.paddingRight,
+  )
+  const availableHeight = Math.max(
+    0,
+    viewportMetrics.height - viewportMetrics.paddingTop - viewportMetrics.paddingBottom,
+  )
+  const measuredCols = Math.max(1, Math.floor(availableWidth / metrics.charWidth))
+  const gridCols = cols ?? (maxColumns ? Math.min(maxColumns, measuredCols) : measuredCols)
+  const viewportMinRows = Math.max(1, Math.ceil(availableHeight / metrics.lineHeight))
+  const gridMinRows = Math.max(minRows, viewportMinRows)
+
   const grid = useMemo(() => {
     const lines = parseAnsiToLines(content)
-    return ansiLinesToCells(lines, gridCols, minRows)
-  }, [content, gridCols, minRows])
+    return ansiLinesToCells(lines, gridCols, gridMinRows)
+  }, [content, gridCols, gridMinRows])
 
   const rows = grid.length
   const selectionRanges = useMemo(
@@ -246,6 +298,36 @@ export function AsciiCanvas({
   }, [])
 
   useEffect(() => {
+    const viewport = viewportRef.current
+
+    if (!viewport) {
+      return
+    }
+
+    const measure = () => setViewportMetrics(measureViewport(viewport))
+
+    measure()
+    const resizeObserver = new ResizeObserver(measure)
+    resizeObserver.observe(viewport)
+
+    return () => resizeObserver.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (!autoScroll || !shouldStickToBottomRef.current) {
+      return
+    }
+
+    const viewport = viewportRef.current
+
+    if (!viewport) {
+      return
+    }
+
+    viewport.scrollTop = viewport.scrollHeight - viewport.clientHeight
+  }, [autoScroll, content, rows])
+
+  useEffect(() => {
     if (!contextMenu) {
       return
     }
@@ -256,6 +338,18 @@ export function AsciiCanvas({
     return () => document.removeEventListener("pointerdown", closeContextMenu)
   }, [contextMenu])
 
+  const updateStickToBottom = useCallback(() => {
+    const viewport = viewportRef.current
+
+    if (!viewport) {
+      return
+    }
+
+    const distanceFromBottom =
+      viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight
+    shouldStickToBottomRef.current = distanceFromBottom <= bottomThreshold
+  }, [])
+
   const eventToCell = useCallback(
     (event: PointerEvent<HTMLDivElement>): CellPosition => {
       const viewport = viewportRef.current
@@ -265,8 +359,16 @@ export function AsciiCanvas({
       }
 
       const rect = viewport.getBoundingClientRect()
-      const x = event.clientX - rect.left + viewport.scrollLeft - 16
-      const y = event.clientY - rect.top + viewport.scrollTop - 16
+      const x =
+        event.clientX -
+        rect.left +
+        viewport.scrollLeft -
+        viewportMetrics.paddingLeft
+      const y =
+        event.clientY -
+        rect.top +
+        viewport.scrollTop -
+        viewportMetrics.paddingTop
       const col = Math.max(
         0,
         Math.min(gridCols - 1, Math.floor(x / metrics.charWidth)),
@@ -278,7 +380,14 @@ export function AsciiCanvas({
 
       return { row, col }
     },
-    [gridCols, metrics.charWidth, metrics.lineHeight, rows],
+    [
+      gridCols,
+      metrics.charWidth,
+      metrics.lineHeight,
+      rows,
+      viewportMetrics.paddingLeft,
+      viewportMetrics.paddingTop,
+    ],
   )
 
   const handleContextMenu = (event: MouseEvent<HTMLDivElement>) => {
@@ -371,7 +480,7 @@ export function AsciiCanvas({
   return (
     <div
       className={cn(
-        "relative overflow-auto rounded-md border border-slate-200 bg-white text-[13px] leading-[1.45] text-slate-950 shadow-sm outline-none select-none",
+        "relative overflow-auto bg-white p-4 text-[13px] leading-[1.45] text-slate-950 outline-none select-none",
         className,
       )}
       onContextMenu={handleContextMenu}
@@ -380,6 +489,7 @@ export function AsciiCanvas({
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onScroll={updateStickToBottom}
       ref={viewportRef}
       role="application"
       style={{ tabSize: 2 }}
@@ -393,78 +503,76 @@ export function AsciiCanvas({
         0000000000
       </span>
 
-      <div className="min-w-max p-4 font-mono">
-        <div
-          className="relative"
-          style={{
-            height: rows * metrics.lineHeight,
-            width: gridCols * metrics.charWidth,
-          }}
-        >
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-20">
-            {selectionRanges.map((range) => (
-              <div
-                className="absolute rounded-[1px] bg-blue-500/28 mix-blend-multiply"
-                key={`${range.row}-${range.fromCol}-${range.toCol}`}
-                style={{
-                  height: metrics.lineHeight,
-                  left: range.fromCol * metrics.charWidth,
-                  top: range.row * metrics.lineHeight,
-                  width: (range.toCol - range.fromCol + 1) * metrics.charWidth,
-                }}
-              />
-            ))}
-          </div>
+      <div
+        className="relative font-mono"
+        style={{
+          height: rows * metrics.lineHeight,
+          width: gridCols * metrics.charWidth,
+        }}
+      >
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-20">
+          {selectionRanges.map((range) => (
+            <div
+              className="absolute rounded-[1px] bg-blue-500/28 mix-blend-multiply"
+              key={`${range.row}-${range.fromCol}-${range.toCol}`}
+              style={{
+                height: metrics.lineHeight,
+                left: range.fromCol * metrics.charWidth,
+                top: range.row * metrics.lineHeight,
+                width: (range.toCol - range.fromCol + 1) * metrics.charWidth,
+              }}
+            />
+          ))}
+        </div>
 
-          <div className="relative z-10">
-            {grid.map((row, rowIndex) => (
-              <div
-                aria-label={`Line ${rowIndex + 1}`}
-                className="whitespace-pre"
-                key={rowIndex}
-                style={{
-                  height: metrics.lineHeight,
-                  lineHeight: `${metrics.lineHeight}px`,
-                }}
-              >
-                {cellsToRuns(row).map((run) => {
-                  const key = `${rowIndex}-${run.startCol}-${getStyleKey(run.style)}`
-                  const style = getAnsiStyle(run.style)
+        <div className="relative z-10">
+          {grid.map((row, rowIndex) => (
+            <div
+              aria-label={`Line ${rowIndex + 1}`}
+              className="whitespace-pre"
+              key={rowIndex}
+              style={{
+                height: metrics.lineHeight,
+                lineHeight: `${metrics.lineHeight}px`,
+              }}
+            >
+              {cellsToRuns(row).map((run) => {
+                const key = `${rowIndex}-${run.startCol}-${getStyleKey(run.style)}`
+                const style = getAnsiStyle(run.style)
 
-                  if (!run.style.label) {
-                    return (
-                      <span key={key} style={style}>
-                        {run.text}
-                      </span>
-                    )
-                  }
-
-                  const fieldKind = classifyOscField(run.style.label)
-
-                  if (fieldKind === "link") {
-                    return (
-                      <a
-                        href={run.style.label}
-                        key={key}
-                        onClick={handleLinkClick}
-                        rel="noreferrer"
-                        style={style}
-                        target="_blank"
-                      >
-                        {run.text}
-                      </a>
-                    )
-                  }
-
+                if (!run.style.label) {
                   return (
-                    <span key={key} style={style} title={run.style.label}>
+                    <span key={key} style={style}>
                       {run.text}
                     </span>
                   )
-                })}
-              </div>
-            ))}
-          </div>
+                }
+
+                const fieldKind = classifyOscField(run.style.label)
+
+                if (fieldKind === "link") {
+                  return (
+                    <a
+                      href={run.style.label}
+                      key={key}
+                      onClick={handleLinkClick}
+                      rel="noreferrer"
+                      style={style}
+                      target="_blank"
+                    >
+                      {run.text}
+                    </a>
+                  )
+                }
+
+                return (
+                  <span key={key} style={style} title={run.style.label}>
+                    {run.text}
+                  </span>
+                )
+              })}
+            </div>
+          ))}
         </div>
       </div>
 
@@ -488,3 +596,4 @@ export function AsciiCanvas({
     </div>
   )
 }
+

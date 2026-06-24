@@ -12,8 +12,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ai-sdk/openai-compatible": "^2.0.51",
+    "@ai-sdk/react": "^3.0.211",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@tailwindcss/vite": "^4",
+    "ai": "^6.0.209",
     "anser": "^2.3.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
