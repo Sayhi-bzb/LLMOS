@@ -22,6 +22,10 @@ export interface ServerSystemPrompt {
   systemPrompt: string
 }
 
+export interface ServerInitialScreen {
+  initialScreen: string
+}
+
 export interface LlmConfigDraft {
   baseURL: string
   apiKey: string

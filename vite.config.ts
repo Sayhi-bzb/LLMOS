@@ -9,6 +9,7 @@ import { defineConfig, loadEnv, type Plugin } from "vite"
 const completionApiPath = "/api/completion"
 const llmConfigApiPath = "/api/llm-config"
 const systemPromptApiPath = "/api/system-prompt"
+const initialScreenApiPath = "/api/initial-screen"
 const defaultLiteLLMBaseURL = "http://localhost:4000/v1"
 const managedEnvKeys = ["LITELLM_BASE_URL", "LITELLM_API_KEY", "LITELLM_MODEL"] as const
 
@@ -144,6 +145,7 @@ const llmCompletionPlugin = (initialConfig: LiteLLMServerConfig): Plugin => {
   const runtimeConfig: LiteLLMServerConfig = { ...initialConfig }
   const envLocalPath = path.resolve(process.cwd(), ".env.local")
   const systemPromptPath = path.resolve(process.cwd(), "prompts/system.md")
+  const initialScreenPath = path.resolve(process.cwd(), "prompts/initial-screen.md")
 
   const handleCompletion = async (
     req: import("node:http").IncomingMessage,
@@ -243,6 +245,28 @@ const llmCompletionPlugin = (initialConfig: LiteLLMServerConfig): Plugin => {
     }
   }
 
+  const handleInitialScreen = async (
+    req: import("node:http").IncomingMessage,
+    res: import("node:http").ServerResponse,
+  ) => {
+    if (req.method !== "GET") {
+      sendJson(res, 405, { error: "Method not allowed" })
+      return
+    }
+
+    try {
+      const initialScreen = await fs.readFile(initialScreenPath, "utf8")
+      sendJson(res, 200, { initialScreen })
+    } catch (error) {
+      if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+        sendJson(res, 200, { initialScreen: "" })
+        return
+      }
+
+      const message = error instanceof Error ? error.message : "Unknown error"
+      sendJson(res, 500, { error: message })
+    }
+  }
   const handleSystemPrompt = async (
     req: import("node:http").IncomingMessage,
     res: import("node:http").ServerResponse,
@@ -292,6 +316,9 @@ const llmCompletionPlugin = (initialConfig: LiteLLMServerConfig): Plugin => {
       server.middlewares.use(systemPromptApiPath, (req, res) => {
         void handleSystemPrompt(req, res)
       })
+      server.middlewares.use(initialScreenApiPath, (req, res) => {
+        void handleInitialScreen(req, res)
+      })
     },
     configurePreviewServer(server) {
       server.middlewares.use(completionApiPath, (req, res) => {
@@ -302,6 +329,9 @@ const llmCompletionPlugin = (initialConfig: LiteLLMServerConfig): Plugin => {
       })
       server.middlewares.use(systemPromptApiPath, (req, res) => {
         void handleSystemPrompt(req, res)
+      })
+      server.middlewares.use(initialScreenApiPath, (req, res) => {
+        void handleInitialScreen(req, res)
       })
     },
   }
@@ -331,3 +361,4 @@ export default defineConfig(({ mode }) => {
     },
   }
 })
+

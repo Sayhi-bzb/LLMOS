@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react"
 
+import { repairBoxDrawingLines } from "@/lib/box-repair"
 import { parseCanvasContent } from "@/lib/canvas-content"
 import { canvasLinesToCells } from "@/lib/canvas-text"
 import { cn } from "@/lib/utils"
@@ -47,8 +48,9 @@ export function AsciiCanvas({
 
   const grid = useMemo(() => {
     const lines = parseCanvasContent(content, { streaming: isStreaming })
+    const repairedLines = repairBoxDrawingLines(lines, gridCols)
 
-    return canvasLinesToCells(lines, gridCols, gridMinRows)
+    return canvasLinesToCells(repairedLines, gridCols, gridMinRows)
   }, [content, gridCols, gridMinRows, isStreaming])
 
   const rows = grid.length
@@ -156,5 +158,4 @@ export function AsciiCanvas({
 }
 
 export type { AsciiCanvasProps }
-
 

@@ -10,7 +10,8 @@
     "knip": "knip",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check:box-repair": "node scripts/check-box-repair.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^2.0.51",

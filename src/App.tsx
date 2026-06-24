@@ -1,8 +1,8 @@
 import { useCompletion } from "@ai-sdk/react"
 import { useEffect, useRef, useState, type FormEvent } from "react"
 
-import { LlmCanvasWorkspace, LlmConfigPanel, pendingOutput, sampleOutput } from "@/components/llm"
-import type { LlmConfigDraft, LlmTurnFrame, ServerLlmConfig, ServerSystemPrompt } from "@/components/llm"
+import { LlmCanvasWorkspace, LlmConfigPanel, pendingOutput } from "@/components/llm"
+import type { LlmConfigDraft, LlmTurnFrame, ServerInitialScreen, ServerLlmConfig, ServerSystemPrompt } from "@/components/llm"
 
 const defaultLiteLLMBaseURL = "http://localhost:4000/v1"
 
@@ -20,6 +20,14 @@ const createFrameId = () => {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
+const formatPromptWithSourceScreen = (sourceContent: string, prompt: string) => [
+  "当前 screen:",
+  sourceContent.trim(),
+  "",
+  "用户操作:",
+  prompt.trim(),
+].join("\n")
+
 const getFrameTitle = (prompt: string) => {
   const title = prompt.split(/\r?\n/)[0]?.trim() || "Untitled turn"
 
@@ -29,6 +37,7 @@ const getFrameTitle = (prompt: string) => {
 function App() {
   const [savedSystemPrompt, setSavedSystemPrompt] = useState("")
   const [systemPromptDraft, setSystemPromptDraft] = useState("")
+  const [initialScreenContent, setInitialScreenContent] = useState("")
   const [configOpen, setConfigOpen] = useState(false)
   const [configDraft, setConfigDraft] = useState<LlmConfigDraft>(emptyConfigDraft)
   const [hasServerApiKey, setHasServerApiKey] = useState(false)
@@ -106,6 +115,28 @@ function App() {
       }
     }
 
+    const loadInitialScreen = async () => {
+      try {
+        const response = await fetch("/api/initial-screen")
+
+        if (!response.ok) {
+          throw new Error(`Initial screen load failed: ${response.status}`)
+        }
+
+        const data = (await response.json()) as ServerInitialScreen
+
+        if (ignore) {
+          return
+        }
+
+        setInitialScreenContent(data.initialScreen ?? "")
+      } catch (loadError) {
+        if (!ignore) {
+          console.error(loadError)
+        }
+      }
+    }
+
     const loadConfig = async () => {
       try {
         const response = await fetch("/api/llm-config")
@@ -140,6 +171,7 @@ function App() {
 
     void loadConfig()
     void loadSystemPrompt()
+    void loadInitialScreen()
 
     return () => {
       ignore = true
@@ -187,7 +219,8 @@ function App() {
   }, [error, isLoading])
 
   const selectedFrame = frames.find((frame) => frame.id === selectedFrameId)
-  const canvasContent = selectedFrame ? selectedFrame.content : isLoading ? pendingOutput : sampleOutput
+  const isInitialScreenVisible = !selectedFrame && !isLoading
+  const canvasContent = selectedFrame ? selectedFrame.content : isLoading ? pendingOutput : initialScreenContent
   const canSubmit = input.trim().length > 0 && !isLoading
   const hasUnsavedSystemPrompt = systemPromptDraft !== savedSystemPrompt
 
@@ -258,17 +291,20 @@ function App() {
     }
   }
 
-  const submitPrompt = (prompt: string) => {
-    const nextPrompt = prompt.trim()
+  const submitPrompt = (prompt: string, options?: { sourceContent?: string }) => {
+    const actionPrompt = prompt.trim()
+    const nextPrompt = options?.sourceContent
+      ? formatPromptWithSourceScreen(options.sourceContent, actionPrompt)
+      : actionPrompt
 
-    if (!nextPrompt || isLoading) {
+    if (!actionPrompt || isLoading) {
       return
     }
 
     const frameId = createFrameId()
     const nextFrame: LlmTurnFrame = {
       id: frameId,
-      title: getFrameTitle(nextPrompt),
+      title: getFrameTitle(actionPrompt),
       prompt: nextPrompt,
       content: "",
       createdAt: Date.now(),
@@ -284,6 +320,13 @@ function App() {
         systemPrompt: savedSystemPrompt.trim(),
       },
     })
+  }
+
+  const handlePromptHref = (prompt: string) => {
+    submitPrompt(
+      prompt,
+      isInitialScreenVisible ? { sourceContent: initialScreenContent } : undefined,
+    )
   }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -352,7 +395,7 @@ function App() {
         onSystemPromptChange={setSystemPromptDraft}
         onSaveSystemPrompt={handleSaveSystemPrompt}
         onInputChange={setInput}
-        onPromptHref={submitPrompt}
+        onPromptHref={handlePromptHref}
         onSubmit={handleSubmit}
         onSubmitShortcut={handleSubmitShortcut}
         onResetThread={handleResetThread}
@@ -363,11 +406,4 @@ function App() {
 }
 
 export default App
-
-
-
-
-
-
-
 
