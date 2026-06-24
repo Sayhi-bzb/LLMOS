@@ -258,20 +258,18 @@ function App() {
     }
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const submitPrompt = (prompt: string) => {
+    const nextPrompt = prompt.trim()
 
-    const prompt = input.trim()
-
-    if (!prompt || isLoading) {
+    if (!nextPrompt || isLoading) {
       return
     }
 
     const frameId = createFrameId()
     const nextFrame: LlmTurnFrame = {
       id: frameId,
-      title: getFrameTitle(prompt),
-      prompt,
+      title: getFrameTitle(nextPrompt),
+      prompt: nextPrompt,
       content: "",
       createdAt: Date.now(),
       status: "streaming",
@@ -281,11 +279,16 @@ function App() {
     setFrames((currentFrames) => [...currentFrames, nextFrame])
     setSelectedFrameId(frameId)
     setCompletion("")
-    void complete(prompt, {
+    void complete(nextPrompt, {
       body: {
         systemPrompt: savedSystemPrompt.trim(),
       },
     })
+  }
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    submitPrompt(input)
   }
 
   const handleResetThread = () => {
@@ -345,6 +348,7 @@ function App() {
         onSystemPromptChange={setSystemPromptDraft}
         onSaveSystemPrompt={handleSaveSystemPrompt}
         onInputChange={setInput}
+        onPromptHref={submitPrompt}
         onSubmit={handleSubmit}
         onResetThread={handleResetThread}
         onStop={handleStop}

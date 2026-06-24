@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react"
 
 import type { CanvasCell, CanvasStyle } from "@/lib/canvas-text"
+import { isCanvasLinkHref } from "@/lib/canvas-href"
 
 import type { CellRun, OscFieldKind } from "@/components/ascii-canvas/types"
 
@@ -57,7 +58,7 @@ export function getCanvasStyle(style: CanvasStyle): CSSProperties {
 }
 
 export function classifyOscField(value: string): OscFieldKind {
-  if (/^(https?:|mailto:|tel:)/i.test(value)) {
+  if (isCanvasLinkHref(value)) {
     return "link"
   }
 

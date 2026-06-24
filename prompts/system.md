@@ -6,9 +6,8 @@
 - 文字颜色：<span fg-primary>文本</span>。
 - 背景颜色：<span bg-surface>文本</span>。
 - 组合颜色：<span fg-white bg-danger>文本</span>。
-- 可点击操作：[显示文本](href)。href 暂时只是占位。
+- 可点击操作：[显示文本](href)。http/https href 是外链；prompt://文本 会作为下一轮用户请求。
 - 带颜色的操作：[<span fg-white bg-primary> 操作文本 </span>](href)。
-- 结构化信息使用 Markdown 表格。
 
 可用颜色语义：foreground、background、primary、secondary、muted、accent、danger、success、warning、surface、white、black。
 可用前景辅助色：primary-fg、secondary-fg、muted-fg、accent-fg、danger-fg、success-fg、warning-fg、surface-fg。
@@ -21,4 +20,4 @@
 <span bg-surface>版本: LLMOS v1.0.2026-STABLE</span>
 <span bg-surface>状态: 准备就绪</span>
 
-[<span fg-white bg-primary> 启动图形界面 </span>](https://example.com/gui) [<span fg-white bg-secondary> 查看系统日志 </span>](https://example.com/logs) [<span fg-white bg-danger> 进入救援模式 </span>](https://example.com/rescue)
+[<span fg-white bg-primary> 启动图形界面 </span>](prompt://启动图形界面) [<span fg-white bg-secondary> 查看系统日志 </span>](prompt://查看系统日志) [<span fg-white bg-danger> 进入救援模式 </span>](prompt://进入救援模式并列出可用操作)

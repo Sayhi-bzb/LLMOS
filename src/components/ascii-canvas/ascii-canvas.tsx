@@ -19,6 +19,7 @@ export function AsciiCanvas({
   className,
   autoScroll = true,
   isStreaming = false,
+  onPromptHref,
   cols,
   minRows = 18,
   maxColumns,
@@ -57,6 +58,7 @@ export function AsciiCanvas({
     handleContextMenu,
     handleCopy,
     handleCopyRawContent,
+    handleDoubleClick,
     handleKeyDown,
     handleLinkClick,
     handlePointerDown,
@@ -68,6 +70,7 @@ export function AsciiCanvas({
     grid,
     gridCols,
     metrics,
+    onPromptHref,
     rawContent: content,
     rows,
     viewportMetrics,
@@ -112,6 +115,7 @@ export function AsciiCanvas({
       )}
       onContextMenu={handleContextMenu}
       onCopy={handleCopy}
+      onDoubleClick={handleDoubleClick}
       onKeyDown={handleKeyDown}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -152,4 +156,5 @@ export function AsciiCanvas({
 }
 
 export type { AsciiCanvasProps }
+
 

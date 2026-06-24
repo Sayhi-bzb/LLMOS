@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent, type MouseEvent, type PointerEvent, type RefObject } from "react"
 
 import type { CanvasCell } from "@/lib/canvas-text"
+import { parseCanvasHref } from "@/lib/canvas-href"
 
 import { getSelectedText } from "@/components/ascii-canvas/selection"
 import type {
@@ -15,6 +16,7 @@ interface UseCanvasInteractionsOptions {
   grid: CanvasCell[][]
   gridCols: number
   metrics: TextMetrics
+  onPromptHref?: (prompt: string) => void
   rawContent: string
   rows: number
   viewportMetrics: ViewportMetrics
@@ -27,6 +29,7 @@ export function useCanvasInteractions({
   grid,
   gridCols,
   metrics,
+  onPromptHref,
   rawContent,
   rows,
   viewportMetrics,
@@ -34,6 +37,7 @@ export function useCanvasInteractions({
 }: UseCanvasInteractionsOptions) {
   const isDraggingRef = useRef(false)
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null)
+  const selectionStartRef = useRef<CellSelection | null>(null)
   const didDragRef = useRef(false)
   const [selection, setSelection] = useState<CellSelection | null>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
@@ -68,7 +72,7 @@ export function useCanvasInteractions({
   }, [contextMenu])
 
   const eventToCell = useCallback(
-    (event: PointerEvent<HTMLDivElement>): CellPosition => {
+    (event: MouseEvent<HTMLDivElement> | PointerEvent<HTMLDivElement>): CellPosition => {
       const viewport = viewportRef.current
 
       if (!viewport) {
@@ -129,13 +133,14 @@ export function useCanvasInteractions({
     const cell = eventToCell(event)
     event.currentTarget.focus()
     pointerStartRef.current = { x: event.clientX, y: event.clientY }
-    didDragRef.current = false
-    isDraggingRef.current = true
-    setSelection({
+    selectionStartRef.current = {
       anchor: cell,
       focus: cell,
       mode: event.altKey ? "block" : "linear",
-    })
+    }
+    didDragRef.current = false
+    isDraggingRef.current = true
+    setSelection(null)
     event.currentTarget.setPointerCapture(event.pointerId)
     event.preventDefault()
   }
@@ -146,27 +151,64 @@ export function useCanvasInteractions({
     }
 
     const start = pointerStartRef.current
+    const selectionStart = selectionStartRef.current
 
-    if (start) {
-      const distance = Math.hypot(event.clientX - start.x, event.clientY - start.y)
-      didDragRef.current = didDragRef.current || distance > dragThreshold
+    if (!start || !selectionStart) {
+      return
     }
 
+    const distance = Math.hypot(event.clientX - start.x, event.clientY - start.y)
+
+    if (distance <= dragThreshold && !didDragRef.current) {
+      return
+    }
+
+    didDragRef.current = true
+
     const cell = eventToCell(event)
-    setSelection((current) => (current ? { ...current, focus: cell } : null))
+    setSelection({ ...selectionStart, focus: cell })
   }
 
   const handlePointerUp = (event: PointerEvent<HTMLDivElement>) => {
     isDraggingRef.current = false
     pointerStartRef.current = null
+    selectionStartRef.current = null
 
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId)
     }
   }
 
+  const handleDoubleClick = (event: MouseEvent<HTMLDivElement>) => {
+    const cell = eventToCell(event)
+
+    event.currentTarget.focus()
+    setSelection({
+      anchor: cell,
+      focus: cell,
+      mode: "word",
+    })
+    event.preventDefault()
+  }
+
   const handleLinkClick = (event: MouseEvent<HTMLAnchorElement>) => {
     if (didDragRef.current || !event.ctrlKey) {
+      event.preventDefault()
+      didDragRef.current = false
+      return
+    }
+
+    const href = event.currentTarget.getAttribute("href") ?? ""
+    const canvasHref = parseCanvasHref(href)
+
+    if (canvasHref.kind === "prompt") {
+      event.preventDefault()
+      didDragRef.current = false
+      onPromptHref?.(canvasHref.prompt)
+      return
+    }
+
+    if (canvasHref.kind !== "external") {
       event.preventDefault()
       didDragRef.current = false
     }
@@ -203,6 +245,7 @@ export function useCanvasInteractions({
     handleContextMenu,
     handleCopy,
     handleCopyRawContent,
+    handleDoubleClick,
     handleKeyDown,
     handleLinkClick,
     handlePointerDown,
@@ -216,3 +259,5 @@ export function useCanvasInteractions({
 function isLinkTarget(target: EventTarget | null) {
   return target instanceof Element && Boolean(target.closest("a[href]"))
 }
+
+

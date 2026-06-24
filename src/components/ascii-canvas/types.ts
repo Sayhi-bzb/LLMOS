@@ -5,6 +5,7 @@ export interface AsciiCanvasProps {
   className?: string
   autoScroll?: boolean
   isStreaming?: boolean
+  onPromptHref?: (prompt: string) => void
   cols?: number
   minRows?: number
   maxColumns?: number
@@ -20,7 +21,7 @@ export type OscFieldKind = "link" | "note" | "label"
 export interface CellSelection {
   anchor: CellPosition
   focus: CellPosition
-  mode: "linear" | "block"
+  mode: "linear" | "block" | "word"
 }
 
 export interface TextMetrics {

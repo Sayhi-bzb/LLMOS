@@ -21,6 +21,7 @@ interface LlmCanvasWorkspaceProps {
   onSystemPromptChange: (value: string) => void
   onSaveSystemPrompt: () => void
   onInputChange: (value: string) => void
+  onPromptHref: (prompt: string) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
   onResetThread: () => void
   onStop: () => void
@@ -41,6 +42,7 @@ export function LlmCanvasWorkspace({
   onSystemPromptChange,
   onSaveSystemPrompt,
   onInputChange,
+  onPromptHref,
   onSubmit,
   onResetThread,
   onStop,
@@ -82,6 +84,7 @@ export function LlmCanvasWorkspace({
           content={canvasContent}
           className="h-[420px]"
           isStreaming={isCanvasStreaming}
+          onPromptHref={onPromptHref}
         />
         <LlmDebugPanel frame={selectedFrame} isStreaming={isCanvasStreaming} />
       </div>

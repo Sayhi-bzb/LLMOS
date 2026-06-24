@@ -1,6 +1,7 @@
 import MarkdownIt from "markdown-it"
 import type Token from "markdown-it/lib/token.mjs"
 import { getTextDisplayWidth } from "@/lib/canvas-text"
+import { isMarkdownAllowedHref, normalizeMarkdownPromptLinks } from "@/lib/canvas-href"
 
 export interface RichTextStyle {
   bold?: boolean
@@ -38,6 +39,8 @@ const markdown = new MarkdownIt({
   linkify: false,
   typographer: false,
 })
+const defaultValidateLink = markdown.validateLink.bind(markdown)
+markdown.validateLink = (url: string) => isMarkdownAllowedHref(url, defaultValidateLink)
 
 const tableColumnGap = 3
 const allowedColorPattern = /^#(?:[\da-f]{3}|[\da-f]{6})$/i
@@ -69,6 +72,7 @@ const semanticColorMap: Record<string, string> = {
 }
 
 const emptyStyle = (): RichTextStyle => ({})
+
 
 const normalizeColor = (value: string) => {
   const trimmed = value.trim()
@@ -412,7 +416,7 @@ const appendLines = (target: RichTextLine[], nextLines: RichTextLine[]) => {
 export const parseMarkdownToRichLines = (content: string): RichTextLine[] => {
   const lines: RichTextLine[] = [[]]
   const stack: StyleFrame[] = []
-  const tokens = markdown.parse(content, {})
+  const tokens = markdown.parse(normalizeMarkdownPromptLinks(content), {})
 
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index]
