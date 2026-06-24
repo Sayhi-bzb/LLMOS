@@ -77,7 +77,7 @@ function isEditableTarget(target: EventTarget | null) {
   return false
 }
 
-export function ThemeProvider({
+function ThemeProvider({
   children,
   defaultTheme = "system",
   storageKey = "theme",
@@ -219,13 +219,5 @@ export function ThemeProvider({
   )
 }
 
-const useTheme = () => {
-  const context = React.useContext(ThemeProviderContext)
-
-  if (context === undefined) {
-    throw new Error("useTheme must be used within a ThemeProvider")
-  }
-
-  return context
-}
+export { ThemeProvider }
 

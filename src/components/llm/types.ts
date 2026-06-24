@@ -1,19 +1,15 @@
-export type LlmTurnFrameStatus = "streaming" | "complete" | "error" | "stopped"
-
-export interface LlmTurnFrameDebug {
-  lastCompletionLength?: number
-  finalCompletionLength?: number
-}
-
 export interface LlmTurnFrame {
   id: string
   title: string
   prompt: string
   content: string
   rawFinalContent?: string
-  debug?: LlmTurnFrameDebug
+  debug?: {
+    lastCompletionLength?: number
+    finalCompletionLength?: number
+  }
   createdAt: number
-  status: LlmTurnFrameStatus
+  status: "streaming" | "complete" | "error" | "stopped"
 }
 
 export interface ServerLlmConfig {

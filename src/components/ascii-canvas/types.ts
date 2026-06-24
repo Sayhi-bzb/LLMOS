@@ -15,13 +15,12 @@ export interface CellPosition {
   col: number
 }
 
-export type SelectionMode = "linear" | "block"
 export type OscFieldKind = "link" | "note" | "label"
 
 export interface CellSelection {
   anchor: CellPosition
   focus: CellPosition
-  mode: SelectionMode
+  mode: "linear" | "block"
 }
 
 export interface TextMetrics {

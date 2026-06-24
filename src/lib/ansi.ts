@@ -1,7 +1,7 @@
 import Anser from "anser"
-import { canvasLinesToCells, type CanvasCell, type CanvasLine, type CanvasRun, type CanvasStyle, type CanvasTextDecoration } from "@/lib/canvas-text"
+import { type CanvasLine, type CanvasRun, type CanvasStyle, type CanvasTextDecoration } from "@/lib/canvas-text"
 
-export type AnsiTextDecoration =
+type AnsiTextDecoration =
   | "bold"
   | "dim"
   | "italic"
@@ -11,10 +11,9 @@ export type AnsiTextDecoration =
   | "hidden"
   | "strikethrough"
 
-export type AnsiStyle = CanvasStyle
-export type AnsiRun = CanvasRun
+type AnsiStyle = CanvasStyle
+type AnsiRun = CanvasRun
 export type AnsiLine = CanvasLine
-export type AnsiCell = CanvasCell
 
 
 interface OscSegment {
@@ -462,9 +461,5 @@ export const parseAnsiToLines = (content: string): AnsiLine[] => {
 }
 
 
-export const stripAnsi = (content: string) =>
-  splitOsc8Segments(content)
-    .map((segment) => Anser.ansiToText(segment.text))
-    .join("")
 
-export const ansiLinesToCells = canvasLinesToCells
+

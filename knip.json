@@ -1,3 +1,4 @@
 {
+  "entry": ["src/components/ui/**/*.{ts,tsx}"],
   "project": ["src/**/*.{ts,tsx,css}"]
 }

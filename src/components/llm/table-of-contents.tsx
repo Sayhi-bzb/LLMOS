@@ -705,15 +705,10 @@ function TableOfContentsMobileContent({
 
 export {
   TableOfContents,
-  TableOfContentsHeader,
-  TableOfContentsIcon,
-  TableOfContentsItem,
   TableOfContentsList,
   TableOfContentsMobile,
-  TableOfContentsProgress,
 }
 
 export type { TableOfContentsItem as TocItem } from "@/hooks/use-table-of-contents"
 
-export { useScrollSpy } from "@/hooks/use-table-of-contents"
 

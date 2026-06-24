@@ -11,7 +11,7 @@ export interface RichTextStyle {
   href?: string
 }
 
-export interface RichTextRun {
+interface RichTextRun {
   text: string
   style: RichTextStyle
 }
@@ -225,14 +225,22 @@ const consumeInlineToken = (
   }
 }
 
+const consumeInlineTokens = (
+  lines: RichTextLine[],
+  stack: StyleFrame[],
+  tokens: Token[],
+) => {
+  for (const token of tokens) {
+    consumeInlineToken(lines, stack, token)
+  }
+}
+
 const inlineTokenToRuns = (token: Token, frames: StyleFrame[] = []): RichTextLine => {
   const lines: RichTextLine[] = [[]]
   const stack = frames.map((frame) => ({ ...frame }))
 
   if (token.children) {
-    for (const child of token.children) {
-      consumeInlineToken(lines, stack, child)
-    }
+    consumeInlineTokens(lines, stack, token.children)
   }
 
   return lines[0]
@@ -367,9 +375,7 @@ export const parseMarkdownToRichLines = (content: string): RichTextLine[] => {
     }
 
     if (token.type === "inline" && token.children) {
-      for (const child of token.children) {
-        consumeInlineToken(lines, stack, child)
-      }
+      consumeInlineTokens(lines, stack, token.children)
       continue
     }
 
@@ -385,3 +391,4 @@ export const parseMarkdownToRichLines = (content: string): RichTextLine[] => {
 
   return lines
 }
+
