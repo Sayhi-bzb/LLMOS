@@ -47,7 +47,7 @@ export function getCanvasStyle(style: CanvasStyle): CSSProperties {
     fontStyle: decorations.has("italic") ? "italic" : undefined,
     opacity: decorations.has("dim") ? 0.72 : undefined,
     textDecoration: [
-      decorations.has("underline") || style.label ? "underline" : "",
+      decorations.has("underline") ? "underline" : "",
       decorations.has("strikethrough") ? "line-through" : "",
     ]
       .filter(Boolean)
@@ -76,3 +76,4 @@ function stylesEqual(left: CanvasStyle, right: CanvasStyle) {
     left.decorations.join("|") === right.decorations.join("|")
   )
 }
+

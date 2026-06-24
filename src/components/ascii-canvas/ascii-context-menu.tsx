@@ -2,14 +2,14 @@ import type { ContextMenuState } from "@/components/ascii-canvas/types"
 
 interface AsciiContextMenuProps {
   contextMenu: ContextMenuState
-  copySourceTextDisabled: boolean
-  onCopySourceText: () => void
+  copyRawContentDisabled: boolean
+  onCopyRawContent: () => void
 }
 
 export function AsciiContextMenu({
   contextMenu,
-  copySourceTextDisabled,
-  onCopySourceText,
+  copyRawContentDisabled,
+  onCopyRawContent,
 }: AsciiContextMenuProps) {
   return (
     <div
@@ -20,12 +20,12 @@ export function AsciiContextMenu({
     >
       <button
         className="flex w-full items-center rounded px-2.5 py-1.5 text-left hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
-        disabled={copySourceTextDisabled}
-        onClick={onCopySourceText}
+        disabled={copyRawContentDisabled}
+        onClick={onCopyRawContent}
         role="menuitem"
         type="button"
       >
-        复制源文本
+        复制原始内容
       </button>
     </div>
   )

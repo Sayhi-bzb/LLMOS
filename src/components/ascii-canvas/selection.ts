@@ -47,44 +47,10 @@ export function getSelectedText(grid: CanvasCell[][], selection: CellSelection) 
     .join("\n")
 }
 
-export function getSelectedSourceText(
-  grid: CanvasCell[][],
-  selection: CellSelection | null,
-) {
-  if (!selection) {
-    return ""
-  }
-
-  return getSelectedCellsByRange(grid, selection)
-    .map((cells) =>
-      trimTrailingEmptyCells(cells)
-        .filter((cell) => !cell.continuation)
-        .map((cell) => cell.sourceText ?? cell.char)
-        .join(""),
-    )
-    .join("\n")
-}
-
 function getSelectedCellsByRange(grid: CanvasCell[][], selection: CellSelection) {
   return getSelectionRanges(grid, selection).map((range) =>
     grid[range.row].slice(range.fromCol, range.toCol + 1),
   )
-}
-
-function trimTrailingEmptyCells(cells: CanvasCell[]) {
-  let endIndex = cells.length
-
-  while (endIndex > 0) {
-    const cell = cells[endIndex - 1]
-
-    if (cell.continuation || cell.sourceText || cell.char.trimEnd()) {
-      break
-    }
-
-    endIndex -= 1
-  }
-
-  return cells.slice(0, endIndex)
 }
 
 function normalizeLinearSelection(selection: CellSelection) {

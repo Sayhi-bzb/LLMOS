@@ -1,5 +1,6 @@
 import MarkdownIt from "markdown-it"
 import type Token from "markdown-it/lib/token.mjs"
+import { getTextDisplayWidth } from "@/lib/canvas-text"
 
 export interface RichTextStyle {
   bold?: boolean
@@ -42,12 +43,59 @@ const tableColumnGap = 3
 const allowedColorPattern = /^#(?:[\da-f]{3}|[\da-f]{6})$/i
 const spanOpenPattern = /^<span\s+([^>]*)>$/i
 const styleAttributePattern = /\bstyle\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/i
+const semanticColorAttributePattern = /\b(fg|bg)-([a-z][-_a-z0-9]*)\b/gi
+
+const semanticColorMap: Record<string, string> = {
+  foreground: "var(--foreground)",
+  background: "var(--background)",
+  primary: "var(--primary)",
+  secondary: "var(--secondary)",
+  muted: "var(--muted)",
+  accent: "var(--accent)",
+  danger: "var(--destructive)",
+  success: "var(--success)",
+  warning: "var(--warning)",
+  surface: "var(--card)",
+  white: "#FFFFFF",
+  black: "#000000",
+  "primary-fg": "var(--primary-foreground)",
+  "secondary-fg": "var(--secondary-foreground)",
+  "muted-fg": "var(--muted-foreground)",
+  "accent-fg": "var(--accent-foreground)",
+  "danger-fg": "var(--destructive-foreground)",
+  "success-fg": "var(--success-foreground)",
+  "warning-fg": "var(--warning-foreground)",
+  "surface-fg": "var(--card-foreground)",
+}
 
 const emptyStyle = (): RichTextStyle => ({})
 
 const normalizeColor = (value: string) => {
   const trimmed = value.trim()
   return allowedColorPattern.test(trimmed) ? trimmed : undefined
+}
+
+const parseSemanticColorAttributes = (attributes: string): StyleFrame => {
+  const frame: StyleFrame = {}
+
+  for (const match of attributes.matchAll(semanticColorAttributePattern)) {
+    const [, channel, token] = match
+    const color = semanticColorMap[token]
+
+    if (!color) {
+      continue
+    }
+
+    if (channel.toLowerCase() === "fg") {
+      frame.color = color
+    }
+
+    if (channel.toLowerCase() === "bg") {
+      frame.background = color
+    }
+  }
+
+  return frame
 }
 
 const parseStyleAttribute = (attributes: string): StyleFrame => {
@@ -102,7 +150,13 @@ const parseHtmlInlineToken = (content: string): HtmlInlineToken => {
   const spanOpenMatch = trimmed.match(spanOpenPattern)
 
   if (spanOpenMatch) {
-    return { kind: "open", frame: parseStyleAttribute(spanOpenMatch[1]) }
+    return {
+      kind: "open",
+      frame: {
+        ...parseStyleAttribute(spanOpenMatch[1]),
+        ...parseSemanticColorAttributes(spanOpenMatch[1]),
+      },
+    }
   }
 
   if (/^<\/span\s*>$/i.test(trimmed)) {
@@ -247,7 +301,7 @@ const inlineTokenToRuns = (token: Token, frames: StyleFrame[] = []): RichTextLin
 }
 
 const visibleText = (runs: RichTextLine) => runs.map((run) => run.text).join("")
-const visibleWidth = (runs: RichTextLine) => Array.from(visibleText(runs)).length
+const visibleWidth = (runs: RichTextLine) => getTextDisplayWidth(visibleText(runs))
 
 const withHeaderStyle = (runs: RichTextLine): RichTextLine =>
   runs.map((run) => ({

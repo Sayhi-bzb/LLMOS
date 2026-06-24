@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ClipboardEvent, type Key
 
 import type { CanvasCell } from "@/lib/canvas-text"
 
-import { getSelectedSourceText, getSelectedText } from "@/components/ascii-canvas/selection"
+import { getSelectedText } from "@/components/ascii-canvas/selection"
 import type {
   CellPosition,
   CellSelection,
@@ -15,6 +15,7 @@ interface UseCanvasInteractionsOptions {
   grid: CanvasCell[][]
   gridCols: number
   metrics: TextMetrics
+  rawContent: string
   rows: number
   viewportMetrics: ViewportMetrics
   viewportRef: RefObject<HTMLDivElement | null>
@@ -26,6 +27,7 @@ export function useCanvasInteractions({
   grid,
   gridCols,
   metrics,
+  rawContent,
   rows,
   viewportMetrics,
   viewportRef,
@@ -35,6 +37,24 @@ export function useCanvasInteractions({
   const didDragRef = useRef(false)
   const [selection, setSelection] = useState<CellSelection | null>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
+  const [isCtrlPressed, setIsCtrlPressed] = useState(false)
+
+  useEffect(() => {
+    const handleKeyState = (event: globalThis.KeyboardEvent) => {
+      setIsCtrlPressed(event.ctrlKey)
+    }
+    const clearCtrlState = () => setIsCtrlPressed(false)
+
+    window.addEventListener("keydown", handleKeyState)
+    window.addEventListener("keyup", handleKeyState)
+    window.addEventListener("blur", clearCtrlState)
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyState)
+      window.removeEventListener("keyup", handleKeyState)
+      window.removeEventListener("blur", clearCtrlState)
+    }
+  }, [])
 
   useEffect(() => {
     if (!contextMenu) {
@@ -102,7 +122,10 @@ export function useCanvasInteractions({
 
     setContextMenu(null)
 
-    const isUnmodifiedLink = isUnmodifiedPointer(event) && isLinkTarget(event.target)
+    if (event.ctrlKey && isLinkTarget(event.target)) {
+      return
+    }
+
     const cell = eventToCell(event)
     event.currentTarget.focus()
     pointerStartRef.current = { x: event.clientX, y: event.clientY }
@@ -114,10 +137,7 @@ export function useCanvasInteractions({
       mode: event.altKey ? "block" : "linear",
     })
     event.currentTarget.setPointerCapture(event.pointerId)
-
-    if (!isUnmodifiedLink) {
-      event.preventDefault()
-    }
+    event.preventDefault()
   }
 
   const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
@@ -146,18 +166,17 @@ export function useCanvasInteractions({
   }
 
   const handleLinkClick = (event: MouseEvent<HTMLAnchorElement>) => {
-    if (didDragRef.current) {
+    if (didDragRef.current || !event.ctrlKey) {
       event.preventDefault()
       didDragRef.current = false
     }
   }
 
-  const selectedSourceText = getSelectedSourceText(grid, selection)
-  const canCopySourceText = selectedSourceText.length > 0
+  const canCopyRawContent = rawContent.length > 0
 
-  const handleCopySourceText = async () => {
-    if (canCopySourceText && navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(selectedSourceText)
+  const handleCopyRawContent = async () => {
+    if (canCopyRawContent && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(rawContent)
     }
 
     setContextMenu(null)
@@ -179,25 +198,21 @@ export function useCanvasInteractions({
   }
 
   return {
-    canCopySourceText,
+    canCopyRawContent,
     contextMenu,
     handleContextMenu,
     handleCopy,
-    handleCopySourceText,
+    handleCopyRawContent,
     handleKeyDown,
     handleLinkClick,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
+    isCtrlPressed,
     selection,
   }
-}
-
-function isUnmodifiedPointer(event: PointerEvent<HTMLElement>) {
-  return !event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey
 }
 
 function isLinkTarget(target: EventTarget | null) {
   return target instanceof Element && Boolean(target.closest("a[href]"))
 }
-

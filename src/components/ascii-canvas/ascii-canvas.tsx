@@ -52,21 +52,23 @@ export function AsciiCanvas({
 
   const rows = grid.length
   const {
-    canCopySourceText,
+    canCopyRawContent,
     contextMenu,
     handleContextMenu,
     handleCopy,
-    handleCopySourceText,
+    handleCopyRawContent,
     handleKeyDown,
     handleLinkClick,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
+    isCtrlPressed,
     selection,
   } = useCanvasInteractions({
     grid,
     gridCols,
     metrics,
+    rawContent: content,
     rows,
     viewportMetrics,
     viewportRef,
@@ -134,14 +136,15 @@ export function AsciiCanvas({
         metrics={metrics}
         rows={rows}
         selectionRanges={selectionRanges}
+        isCtrlPressed={isCtrlPressed}
         onLinkClick={handleLinkClick}
       />
 
       {contextMenu ? (
         <AsciiContextMenu
           contextMenu={contextMenu}
-          copySourceTextDisabled={!canCopySourceText}
-          onCopySourceText={handleCopySourceText}
+          copyRawContentDisabled={!canCopyRawContent}
+          onCopyRawContent={handleCopyRawContent}
         />
       ) : null}
     </div>

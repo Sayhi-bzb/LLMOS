@@ -10,6 +10,10 @@ export interface CanvasContentParseOptions {
 const markdownProtocolPattern = /(?:\*\*|~~|<\/?(?:span|u)\b|\[[^\]]+\]\([^)]*\))/i
 const ansiProtocolPattern = /(?:\x1b\[|\x1b\]8;|\]8;|\[(?:\d{1,3};)+\d{0,3}m?)/
 
+const hexColorPattern = /^#(?:[\da-f]{3}|[\da-f]{6})$/i
+
+const toCanvasColor = (value: string) => hexColorPattern.test(value) ? hexToRgb(value) : value
+
 const hexToRgb = (value: string) => {
   const hex = value.slice(1)
   const expanded = hex.length === 3
@@ -23,8 +27,8 @@ const hexToRgb = (value: string) => {
 }
 
 const richStyleToCanvasStyle = (style: RichTextStyle): CanvasStyle => ({
-  ...(style.color ? { foreground: hexToRgb(style.color) } : {}),
-  ...(style.background ? { background: hexToRgb(style.background) } : {}),
+  ...(style.color ? { foreground: toCanvasColor(style.color) } : {}),
+  ...(style.background ? { background: toCanvasColor(style.background) } : {}),
   ...(style.href ? { label: style.href } : {}),
   decorations: [
     ...(style.bold ? ["bold" as const] : []),
@@ -58,4 +62,5 @@ export const parseCanvasContent = (
 
   return parseAnsiToCanvasLines(content)
 }
+
 

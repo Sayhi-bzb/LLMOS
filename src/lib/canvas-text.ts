@@ -72,6 +72,9 @@ const getCellWidth = (char: string) => {
   return isWideCodePoint(codePoint) ? 2 : 1
 }
 
+export const getTextDisplayWidth = (text: string) =>
+  Array.from(text).reduce((width, char) => width + getCellWidth(char), 0)
+
 export const canvasLinesToCells = (
   lines: CanvasLine[],
   cols: number,
@@ -149,5 +152,4 @@ export const canvasLinesToCells = (
 
   return rows
 }
-
 
