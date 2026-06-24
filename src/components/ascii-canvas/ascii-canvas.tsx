@@ -50,6 +50,7 @@ export function AsciiCanvas({
 
   const rows = grid.length
   const {
+    canCopyAnsiSource,
     contextMenu,
     handleContextMenu,
     handleCopy,
@@ -61,7 +62,6 @@ export function AsciiCanvas({
     handlePointerUp,
     selection,
   } = useCanvasInteractions({
-    content,
     grid,
     gridCols,
     metrics,
@@ -138,6 +138,7 @@ export function AsciiCanvas({
       {contextMenu ? (
         <AsciiContextMenu
           contextMenu={contextMenu}
+          copyAnsiSourceDisabled={!canCopyAnsiSource}
           onCopyAnsiSource={handleCopyAnsiSource}
         />
       ) : null}
@@ -146,3 +147,4 @@ export function AsciiCanvas({
 }
 
 export type { AsciiCanvasProps }
+

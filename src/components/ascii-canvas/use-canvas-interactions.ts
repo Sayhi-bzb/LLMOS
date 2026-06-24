@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ClipboardEvent, type Key
 
 import type { AnsiCell } from "@/lib/ansi"
 
-import { getSelectedText } from "@/components/ascii-canvas/selection"
+import { getSelectedAnsiSource, getSelectedText } from "@/components/ascii-canvas/selection"
 import type {
   CellPosition,
   CellSelection,
@@ -12,7 +12,6 @@ import type {
 } from "@/components/ascii-canvas/types"
 
 interface UseCanvasInteractionsOptions {
-  content: string
   grid: AnsiCell[][]
   gridCols: number
   metrics: TextMetrics
@@ -24,7 +23,6 @@ interface UseCanvasInteractionsOptions {
 const dragThreshold = 4
 
 export function useCanvasInteractions({
-  content,
   grid,
   gridCols,
   metrics,
@@ -154,9 +152,12 @@ export function useCanvasInteractions({
     }
   }
 
+  const selectedAnsiSource = getSelectedAnsiSource(grid, selection)
+  const canCopyAnsiSource = selectedAnsiSource.length > 0
+
   const handleCopyAnsiSource = async () => {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(content)
+    if (canCopyAnsiSource && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(selectedAnsiSource)
     }
 
     setContextMenu(null)
@@ -178,6 +179,7 @@ export function useCanvasInteractions({
   }
 
   return {
+    canCopyAnsiSource,
     contextMenu,
     handleContextMenu,
     handleCopy,
@@ -198,3 +200,4 @@ function isUnmodifiedPointer(event: PointerEvent<HTMLElement>) {
 function isLinkTarget(target: EventTarget | null) {
   return target instanceof Element && Boolean(target.closest("a[href]"))
 }
+

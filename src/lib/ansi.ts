@@ -20,6 +20,7 @@ export interface AnsiStyle {
 export interface AnsiRun {
   text: string
   style: AnsiStyle
+  sourceText?: string
 }
 
 export type AnsiLine = AnsiRun[]
@@ -29,6 +30,7 @@ export interface AnsiCell {
   style: AnsiStyle
   width?: number
   continuation?: boolean
+  sourceText?: string
 }
 
 
@@ -411,10 +413,71 @@ const toStyle = (entry: Anser.AnserJsonEntry, label?: string): AnsiStyle => {
   }
 }
 
+const rgbToSgrValues = (value: string) => {
+  const match = /^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/.exec(value)
+
+  return match ? [match[1], match[2], match[3]] : null
+}
+
+const decorationToSgrCode = (decoration: AnsiTextDecoration) => {
+  switch (decoration) {
+    case "bold":
+      return "1"
+    case "dim":
+      return "2"
+    case "italic":
+      return "3"
+    case "underline":
+      return "4"
+    case "blink":
+      return "5"
+    case "reverse":
+      return "7"
+    case "hidden":
+      return "8"
+    case "strikethrough":
+      return "9"
+  }
+}
+
+const styleToSgr = (style: AnsiStyle) => {
+  const codes: string[] = style.decorations.map(decorationToSgrCode)
+  const foreground = style.foreground ? rgbToSgrValues(style.foreground) : null
+  const background = style.background ? rgbToSgrValues(style.background) : null
+
+  if (foreground) {
+    codes.push("38", "2", ...foreground)
+  }
+
+  if (background) {
+    codes.push("48", "2", ...background)
+  }
+
+  return codes.length > 0 ? `\x1b[${codes.join(";")}m` : ""
+}
+
+const withAnsiSource = (text: string, style: AnsiStyle) => {
+  const sgr = styleToSgr(style)
+  const labelStart = style.label ? `\x1b]8;;${style.label}\x1b\\` : ""
+  const labelEnd = style.label ? "\x1b]8;;\x1b\\" : ""
+  const reset = sgr || style.label ? "\x1b[0m" : ""
+
+  return `${labelStart}${sgr}${text}${reset}${labelEnd}`
+}
 const splitRunIntoLines = (run: AnsiRun): AnsiLine[] => {
   const parts = run.text.split("\n")
 
-  return parts.map((text) => (text.length > 0 ? [{ ...run, text }] : []))
+  return parts.map((text) =>
+    text.length > 0
+      ? [
+          {
+            ...run,
+            text,
+            sourceText: withAnsiSource(text, run.style),
+          },
+        ]
+      : [],
+  )
 }
 
 const appendRunToLines = (lines: AnsiLine[], run: AnsiRun) => {
@@ -442,9 +505,12 @@ export const parseAnsiToLines = (content: string): AnsiLine[] => {
         continue
       }
 
+      const style = toStyle(entry, segment.label)
+
       appendRunToLines(lines, {
         text: entry.content,
-        style: toStyle(entry, segment.label),
+        style,
+        sourceText: withAnsiSource(entry.content, style),
       })
     }
   }
@@ -483,6 +549,7 @@ export const ansiLinesToCells = (
 
     for (const run of line) {
       for (const char of Array.from(run.text)) {
+        const cellSourceText = withAnsiSource(char, run.style)
         const cellWidth = Math.min(getCellWidth(char), safeCols)
 
         if (cellWidth === 0) {
@@ -490,6 +557,7 @@ export const ansiLinesToCells = (
           cells[previousIndex] = {
             ...cells[previousIndex],
             char: `${cells[previousIndex].char}${char}`,
+            sourceText: `${cells[previousIndex].sourceText ?? ""}${cellSourceText}`,
           }
           continue
         }
@@ -503,6 +571,7 @@ export const ansiLinesToCells = (
           char,
           style: cloneStyle(run.style),
           width: cellWidth,
+          sourceText: cellSourceText,
         }
 
         for (let offset = 1; offset < cellWidth; offset += 1) {
@@ -533,3 +602,4 @@ export const ansiLinesToCells = (
 
   return rows
 }
+
