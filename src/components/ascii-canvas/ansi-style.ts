@@ -1,10 +1,10 @@
 import type { CSSProperties } from "react"
 
-import type { AnsiCell, AnsiStyle } from "@/lib/ansi"
+import type { CanvasCell, CanvasStyle } from "@/lib/canvas-text"
 
 import type { CellRun, OscFieldKind } from "@/components/ascii-canvas/types"
 
-export function getStyleKey(style: AnsiStyle) {
+export function getStyleKey(style: CanvasStyle) {
   return [
     style.foreground ?? "",
     style.background ?? "",
@@ -13,7 +13,7 @@ export function getStyleKey(style: AnsiStyle) {
   ].join("|")
 }
 
-export function cellsToRuns(cells: AnsiCell[]): CellRun[] {
+export function cellsToRuns(cells: CanvasCell[]): CellRun[] {
   const runs: CellRun[] = []
 
   for (const [index, cell] of cells.entries()) {
@@ -34,7 +34,7 @@ export function cellsToRuns(cells: AnsiCell[]): CellRun[] {
   return runs
 }
 
-export function getAnsiStyle(style: AnsiStyle): CSSProperties {
+export function getCanvasStyle(style: CanvasStyle): CSSProperties {
   const decorations = new Set(style.decorations)
   const isReverse = decorations.has("reverse")
   const color = isReverse ? style.background : style.foreground
@@ -68,7 +68,7 @@ export function classifyOscField(value: string): OscFieldKind {
   return "note"
 }
 
-function stylesEqual(left: AnsiStyle, right: AnsiStyle) {
+function stylesEqual(left: CanvasStyle, right: CanvasStyle) {
   return (
     left.foreground === right.foreground &&
     left.background === right.background &&

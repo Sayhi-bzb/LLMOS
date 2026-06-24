@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react"
 
-import { ansiLinesToCells, parseAnsiToLines } from "@/lib/ansi"
+import { parseCanvasContent } from "@/lib/canvas-content"
+import { canvasLinesToCells } from "@/lib/canvas-text"
 import { cn } from "@/lib/utils"
 
 import { AsciiContextMenu } from "@/components/ascii-canvas/ascii-context-menu"
@@ -17,6 +18,7 @@ export function AsciiCanvas({
   content,
   className,
   autoScroll = true,
+  isStreaming = false,
   cols,
   minRows = 18,
   maxColumns,
@@ -43,18 +45,18 @@ export function AsciiCanvas({
   const gridMinRows = Math.max(minRows, viewportMinRows)
 
   const grid = useMemo(() => {
-    const lines = parseAnsiToLines(content)
+    const lines = parseCanvasContent(content, { streaming: isStreaming })
 
-    return ansiLinesToCells(lines, gridCols, gridMinRows)
-  }, [content, gridCols, gridMinRows])
+    return canvasLinesToCells(lines, gridCols, gridMinRows)
+  }, [content, gridCols, gridMinRows, isStreaming])
 
   const rows = grid.length
   const {
-    canCopyAnsiSource,
+    canCopySourceText,
     contextMenu,
     handleContextMenu,
     handleCopy,
-    handleCopyAnsiSource,
+    handleCopySourceText,
     handleKeyDown,
     handleLinkClick,
     handlePointerDown,
@@ -138,8 +140,8 @@ export function AsciiCanvas({
       {contextMenu ? (
         <AsciiContextMenu
           contextMenu={contextMenu}
-          copyAnsiSourceDisabled={!canCopyAnsiSource}
-          onCopyAnsiSource={handleCopyAnsiSource}
+          copySourceTextDisabled={!canCopySourceText}
+          onCopySourceText={handleCopySourceText}
         />
       ) : null}
     </div>

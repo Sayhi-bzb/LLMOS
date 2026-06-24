@@ -8,6 +8,7 @@ import { defineConfig, loadEnv, type Plugin } from "vite"
 
 const completionApiPath = "/api/completion"
 const llmConfigApiPath = "/api/llm-config"
+const systemPromptApiPath = "/api/system-prompt"
 const defaultLiteLLMBaseURL = "http://localhost:4000/v1"
 const managedEnvKeys = ["LITELLM_BASE_URL", "LITELLM_API_KEY", "LITELLM_MODEL"] as const
 
@@ -20,6 +21,10 @@ interface LlmConfigRequestBody {
   baseURL?: unknown
   apiKey?: unknown
   model?: unknown
+}
+
+interface SystemPromptRequestBody {
+  systemPrompt?: unknown
 }
 
 interface LiteLLMServerConfig {
@@ -138,6 +143,7 @@ const pipeWebResponse = async (
 const llmCompletionPlugin = (initialConfig: LiteLLMServerConfig): Plugin => {
   const runtimeConfig: LiteLLMServerConfig = { ...initialConfig }
   const envLocalPath = path.resolve(process.cwd(), ".env.local")
+  const systemPromptPath = path.resolve(process.cwd(), "prompts/system.md")
 
   const handleCompletion = async (
     req: import("node:http").IncomingMessage,
@@ -237,6 +243,43 @@ const llmCompletionPlugin = (initialConfig: LiteLLMServerConfig): Plugin => {
     }
   }
 
+  const handleSystemPrompt = async (
+    req: import("node:http").IncomingMessage,
+    res: import("node:http").ServerResponse,
+  ) => {
+    if (req.method === "GET") {
+      try {
+        const systemPrompt = await fs.readFile(systemPromptPath, "utf8")
+        sendJson(res, 200, { systemPrompt })
+      } catch (error) {
+        if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+          sendJson(res, 200, { systemPrompt: "" })
+          return
+        }
+
+        const message = error instanceof Error ? error.message : "Unknown error"
+        sendJson(res, 500, { error: message })
+      }
+      return
+    }
+
+    if (req.method !== "POST") {
+      sendJson(res, 405, { error: "Method not allowed" })
+      return
+    }
+
+    try {
+      const body = (await readJsonBody(req)) as SystemPromptRequestBody
+      const systemPrompt = typeof body.systemPrompt === "string" ? body.systemPrompt : ""
+
+      await fs.mkdir(path.dirname(systemPromptPath), { recursive: true })
+      await fs.writeFile(systemPromptPath, systemPrompt, "utf8")
+      sendJson(res, 200, { systemPrompt })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error"
+      sendJson(res, 500, { error: message })
+    }
+  }
   return {
     name: "llm-completion-api",
     configureServer(server) {
@@ -246,6 +289,9 @@ const llmCompletionPlugin = (initialConfig: LiteLLMServerConfig): Plugin => {
       server.middlewares.use(llmConfigApiPath, (req, res) => {
         void handleLlmConfig(req, res)
       })
+      server.middlewares.use(systemPromptApiPath, (req, res) => {
+        void handleSystemPrompt(req, res)
+      })
     },
     configurePreviewServer(server) {
       server.middlewares.use(completionApiPath, (req, res) => {
@@ -253,6 +299,9 @@ const llmCompletionPlugin = (initialConfig: LiteLLMServerConfig): Plugin => {
       })
       server.middlewares.use(llmConfigApiPath, (req, res) => {
         void handleLlmConfig(req, res)
+      })
+      server.middlewares.use(systemPromptApiPath, (req, res) => {
+        void handleSystemPrompt(req, res)
       })
     },
   }

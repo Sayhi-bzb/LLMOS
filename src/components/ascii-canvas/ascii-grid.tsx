@@ -1,17 +1,17 @@
 import type { MouseEvent } from "react"
 
-import type { AnsiCell } from "@/lib/ansi"
+import type { CanvasCell } from "@/lib/canvas-text"
 
 import {
   cellsToRuns,
   classifyOscField,
-  getAnsiStyle,
+  getCanvasStyle,
   getStyleKey,
 } from "@/components/ascii-canvas/ansi-style"
 import type { RowSelectionRange, TextMetrics } from "@/components/ascii-canvas/types"
 
 interface AsciiGridProps {
-  grid: AnsiCell[][]
+  grid: CanvasCell[][]
   gridCols: number
   metrics: TextMetrics
   rows: number
@@ -63,7 +63,7 @@ export function AsciiGrid({
           >
             {cellsToRuns(row).map((run) => {
               const key = `${rowIndex}-${run.startCol}-${getStyleKey(run.style)}`
-              const style = getAnsiStyle(run.style)
+              const style = getCanvasStyle(run.style)
 
               if (!run.style.label) {
                 return (

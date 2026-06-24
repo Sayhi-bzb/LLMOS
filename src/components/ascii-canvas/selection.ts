@@ -1,9 +1,9 @@
-import type { AnsiCell } from "@/lib/ansi"
+import type { CanvasCell } from "@/lib/canvas-text"
 
 import type { CellSelection, RowSelectionRange } from "@/components/ascii-canvas/types"
 
 export function getSelectionRanges(
-  grid: AnsiCell[][],
+  grid: CanvasCell[][],
   selection: CellSelection | null,
 ): RowSelectionRange[] {
   if (!selection) {
@@ -35,7 +35,7 @@ export function getSelectionRanges(
   }).filter((range) => grid[range.row])
 }
 
-export function getSelectedText(grid: AnsiCell[][], selection: CellSelection) {
+export function getSelectedText(grid: CanvasCell[][], selection: CellSelection) {
   return getSelectedCellsByRange(grid, selection)
     .map((cells) =>
       cells
@@ -47,8 +47,8 @@ export function getSelectedText(grid: AnsiCell[][], selection: CellSelection) {
     .join("\n")
 }
 
-export function getSelectedAnsiSource(
-  grid: AnsiCell[][],
+export function getSelectedSourceText(
+  grid: CanvasCell[][],
   selection: CellSelection | null,
 ) {
   if (!selection) {
@@ -65,13 +65,13 @@ export function getSelectedAnsiSource(
     .join("\n")
 }
 
-function getSelectedCellsByRange(grid: AnsiCell[][], selection: CellSelection) {
+function getSelectedCellsByRange(grid: CanvasCell[][], selection: CellSelection) {
   return getSelectionRanges(grid, selection).map((range) =>
     grid[range.row].slice(range.fromCol, range.toCol + 1),
   )
 }
 
-function trimTrailingEmptyCells(cells: AnsiCell[]) {
+function trimTrailingEmptyCells(cells: CanvasCell[]) {
   let endIndex = cells.length
 
   while (endIndex > 0) {

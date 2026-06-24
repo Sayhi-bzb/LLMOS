@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent, type MouseEvent, type PointerEvent, type RefObject } from "react"
 
-import type { AnsiCell } from "@/lib/ansi"
+import type { CanvasCell } from "@/lib/canvas-text"
 
-import { getSelectedAnsiSource, getSelectedText } from "@/components/ascii-canvas/selection"
+import { getSelectedSourceText, getSelectedText } from "@/components/ascii-canvas/selection"
 import type {
   CellPosition,
   CellSelection,
@@ -12,7 +12,7 @@ import type {
 } from "@/components/ascii-canvas/types"
 
 interface UseCanvasInteractionsOptions {
-  grid: AnsiCell[][]
+  grid: CanvasCell[][]
   gridCols: number
   metrics: TextMetrics
   rows: number
@@ -152,12 +152,12 @@ export function useCanvasInteractions({
     }
   }
 
-  const selectedAnsiSource = getSelectedAnsiSource(grid, selection)
-  const canCopyAnsiSource = selectedAnsiSource.length > 0
+  const selectedSourceText = getSelectedSourceText(grid, selection)
+  const canCopySourceText = selectedSourceText.length > 0
 
-  const handleCopyAnsiSource = async () => {
-    if (canCopyAnsiSource && navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(selectedAnsiSource)
+  const handleCopySourceText = async () => {
+    if (canCopySourceText && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(selectedSourceText)
     }
 
     setContextMenu(null)
@@ -179,11 +179,11 @@ export function useCanvasInteractions({
   }
 
   return {
-    canCopyAnsiSource,
+    canCopySourceText,
     contextMenu,
     handleContextMenu,
     handleCopy,
-    handleCopyAnsiSource,
+    handleCopySourceText,
     handleKeyDown,
     handleLinkClick,
     handlePointerDown,

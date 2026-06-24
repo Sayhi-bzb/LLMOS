@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 interface PromptConsoleProps {
   systemPromptDraft: string
   hasUnsavedSystemPrompt: boolean
+  isSavingSystemPrompt: boolean
   input: string
   isLoading: boolean
   error?: Error
@@ -21,6 +22,7 @@ interface PromptConsoleProps {
 export function PromptConsole({
   systemPromptDraft,
   hasUnsavedSystemPrompt,
+  isSavingSystemPrompt,
   input,
   isLoading,
   error,
@@ -41,10 +43,10 @@ export function PromptConsole({
           </label>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">
-              {hasUnsavedSystemPrompt ? "Unsaved changes" : "Saved"}
+              {isSavingSystemPrompt ? "Saving" : hasUnsavedSystemPrompt ? "Unsaved changes" : "Saved"}
             </span>
             <Button
-              disabled={!hasUnsavedSystemPrompt}
+              disabled={!hasUnsavedSystemPrompt || isSavingSystemPrompt}
               onClick={onSaveSystemPrompt}
               type="button"
               variant="secondary"

@@ -1,19 +1,10 @@
 import { useCompletion } from "@ai-sdk/react"
-import { useEffect, useState, type FormEvent } from "react"
+import { useEffect, useRef, useState, type FormEvent } from "react"
 
 import { LlmCanvasWorkspace, LlmConfigPanel, pendingOutput, sampleOutput } from "@/components/llm"
-import type { LlmConfigDraft, ServerLlmConfig } from "@/components/llm"
+import type { LlmConfigDraft, LlmTurnFrame, ServerLlmConfig, ServerSystemPrompt } from "@/components/llm"
 
-const systemPromptStorageKey = "llmos.systemPrompt"
 const defaultLiteLLMBaseURL = "http://localhost:4000/v1"
-
-const readStoredSystemPrompt = () => {
-  if (typeof window === "undefined") {
-    return ""
-  }
-
-  return window.localStorage.getItem(systemPromptStorageKey) ?? ""
-}
 
 const emptyConfigDraft: LlmConfigDraft = {
   baseURL: defaultLiteLLMBaseURL,
@@ -21,16 +12,34 @@ const emptyConfigDraft: LlmConfigDraft = {
   model: "",
 }
 
+const createFrameId = () => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID()
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
+const getFrameTitle = (prompt: string) => {
+  const title = prompt.split(/\r?\n/)[0]?.trim() || "Untitled turn"
+
+  return title.length > 40 ? `${title.slice(0, 40)}...` : title
+}
+
 export function App() {
-  const initialSystemPrompt = readStoredSystemPrompt()
-  const [savedSystemPrompt, setSavedSystemPrompt] = useState(initialSystemPrompt)
-  const [systemPromptDraft, setSystemPromptDraft] = useState(initialSystemPrompt)
+  const [savedSystemPrompt, setSavedSystemPrompt] = useState("")
+  const [systemPromptDraft, setSystemPromptDraft] = useState("")
   const [configOpen, setConfigOpen] = useState(false)
   const [configDraft, setConfigDraft] = useState<LlmConfigDraft>(emptyConfigDraft)
   const [hasServerApiKey, setHasServerApiKey] = useState(false)
   const [configStatus, setConfigStatus] = useState("Loading config")
   const [configError, setConfigError] = useState("")
   const [isSavingConfig, setIsSavingConfig] = useState(false)
+  const [isSavingSystemPrompt, setIsSavingSystemPrompt] = useState(false)
+  const [frames, setFrames] = useState<LlmTurnFrame[]>([])
+  const [selectedFrameId, setSelectedFrameId] = useState<string | null>(null)
+  const activeFrameIdRef = useRef<string | null>(null)
+  const wasLoadingRef = useRef(false)
   const {
     completion,
     complete,
@@ -44,10 +53,58 @@ export function App() {
     api: "/api/completion",
     streamProtocol: "text",
     experimental_throttle: 50,
+    onFinish: (_prompt, finalCompletion) => {
+      const activeFrameId = activeFrameIdRef.current
+
+      if (!activeFrameId) {
+        return
+      }
+
+      setFrames((currentFrames) =>
+        currentFrames.map((frame) =>
+          frame.id === activeFrameId && frame.status === "streaming"
+            ? {
+                ...frame,
+                content: finalCompletion,
+                rawFinalContent: finalCompletion,
+                debug: {
+                  ...frame.debug,
+                  finalCompletionLength: finalCompletion.length,
+                },
+                status: "complete",
+              }
+            : frame,
+        ),
+      )
+      activeFrameIdRef.current = null
+    },
   })
 
   useEffect(() => {
     let ignore = false
+
+    const loadSystemPrompt = async () => {
+      try {
+        const response = await fetch("/api/system-prompt")
+
+        if (!response.ok) {
+          throw new Error(`System prompt load failed: ${response.status}`)
+        }
+
+        const data = (await response.json()) as ServerSystemPrompt
+
+        if (ignore) {
+          return
+        }
+
+        setSavedSystemPrompt(data.systemPrompt ?? "")
+        setSystemPromptDraft(data.systemPrompt ?? "")
+      } catch (loadError) {
+        if (!ignore) {
+          console.error(loadError)
+        }
+      }
+    }
 
     const loadConfig = async () => {
       try {
@@ -82,13 +139,55 @@ export function App() {
     }
 
     void loadConfig()
+    void loadSystemPrompt()
 
     return () => {
       ignore = true
     }
   }, [])
 
-  const canvasContent = completion || (isLoading ? pendingOutput : sampleOutput)
+  useEffect(() => {
+    const activeFrameId = activeFrameIdRef.current
+
+    if (!activeFrameId) {
+      return
+    }
+
+    setFrames((currentFrames) =>
+      currentFrames.map((frame) =>
+        frame.id === activeFrameId
+          ? {
+              ...frame,
+              content: completion,
+              debug: {
+                ...frame.debug,
+                lastCompletionLength: completion.length,
+              },
+            }
+          : frame,
+      ),
+    )
+  }, [completion])
+
+  useEffect(() => {
+    const activeFrameId = activeFrameIdRef.current
+
+    if (wasLoadingRef.current && !isLoading && activeFrameId && error) {
+      setFrames((currentFrames) =>
+        currentFrames.map((frame) =>
+          frame.id === activeFrameId && frame.status === "streaming"
+            ? { ...frame, status: "error" }
+            : frame,
+        ),
+      )
+      activeFrameIdRef.current = null
+    }
+
+    wasLoadingRef.current = isLoading
+  }, [error, isLoading])
+
+  const selectedFrame = frames.find((frame) => frame.id === selectedFrameId)
+  const canvasContent = selectedFrame ? selectedFrame.content : isLoading ? pendingOutput : sampleOutput
   const canSubmit = input.trim().length > 0 && !isLoading
   const hasUnsavedSystemPrompt = systemPromptDraft !== savedSystemPrompt
 
@@ -96,9 +195,31 @@ export function App() {
     setConfigDraft((current) => ({ ...current, [key]: value }))
   }
 
-  const handleSaveSystemPrompt = () => {
-    window.localStorage.setItem(systemPromptStorageKey, systemPromptDraft)
-    setSavedSystemPrompt(systemPromptDraft)
+  const handleSaveSystemPrompt = async () => {
+    setIsSavingSystemPrompt(true)
+
+    try {
+      const response = await fetch("/api/system-prompt", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ systemPrompt: systemPromptDraft }),
+      })
+      const data = (await response.json()) as Partial<ServerSystemPrompt> & {
+        error?: string
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error ?? `System prompt save failed: ${response.status}`)
+      }
+
+      setSavedSystemPrompt(data.systemPrompt ?? systemPromptDraft)
+    } catch (saveError) {
+      console.error(saveError)
+    } finally {
+      setIsSavingSystemPrompt(false)
+    }
   }
 
   const handleSaveLlmConfig = async () => {
@@ -146,6 +267,19 @@ export function App() {
       return
     }
 
+    const frameId = createFrameId()
+    const nextFrame: LlmTurnFrame = {
+      id: frameId,
+      title: getFrameTitle(prompt),
+      prompt,
+      content: "",
+      createdAt: Date.now(),
+      status: "streaming",
+    }
+
+    activeFrameIdRef.current = frameId
+    setFrames((currentFrames) => [...currentFrames, nextFrame])
+    setSelectedFrameId(frameId)
     setCompletion("")
     void complete(prompt, {
       body: {
@@ -159,8 +293,26 @@ export function App() {
       stop()
     }
 
+    activeFrameIdRef.current = null
+    setFrames([])
+    setSelectedFrameId(null)
     setInput("")
     setCompletion("")
+  }
+
+  const handleStop = () => {
+    const activeFrameId = activeFrameIdRef.current
+
+    if (activeFrameId) {
+      setFrames((currentFrames) =>
+        currentFrames.map((frame) =>
+          frame.id === activeFrameId ? { ...frame, status: "stopped" } : frame,
+        ),
+      )
+      activeFrameIdRef.current = null
+    }
+
+    stop()
   }
 
   return (
@@ -180,18 +332,22 @@ export function App() {
 
       <LlmCanvasWorkspace
         canvasContent={canvasContent}
+        frames={frames}
+        selectedFrameId={selectedFrameId}
         systemPromptDraft={systemPromptDraft}
         hasUnsavedSystemPrompt={hasUnsavedSystemPrompt}
+        isSavingSystemPrompt={isSavingSystemPrompt}
         input={input}
         isLoading={isLoading}
         error={error}
         canSubmit={canSubmit}
+        onSelectFrame={setSelectedFrameId}
         onSystemPromptChange={setSystemPromptDraft}
         onSaveSystemPrompt={handleSaveSystemPrompt}
         onInputChange={setInput}
         onSubmit={handleSubmit}
         onResetThread={handleResetThread}
-        onStop={stop}
+        onStop={handleStop}
       />
     </main>
   )

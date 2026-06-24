@@ -1,4 +1,5 @@
 import Anser from "anser"
+import { canvasLinesToCells, type CanvasCell, type CanvasLine, type CanvasRun, type CanvasStyle, type CanvasTextDecoration } from "@/lib/canvas-text"
 
 export type AnsiTextDecoration =
   | "bold"
@@ -10,28 +11,10 @@ export type AnsiTextDecoration =
   | "hidden"
   | "strikethrough"
 
-export interface AnsiStyle {
-  foreground?: string
-  background?: string
-  decorations: AnsiTextDecoration[]
-  label?: string
-}
-
-export interface AnsiRun {
-  text: string
-  style: AnsiStyle
-  sourceText?: string
-}
-
-export type AnsiLine = AnsiRun[]
-
-export interface AnsiCell {
-  char: string
-  style: AnsiStyle
-  width?: number
-  continuation?: boolean
-  sourceText?: string
-}
+export type AnsiStyle = CanvasStyle
+export type AnsiRun = CanvasRun
+export type AnsiLine = CanvasLine
+export type AnsiCell = CanvasCell
 
 
 interface OscSegment {
@@ -351,46 +334,6 @@ const splitOsc8Segments = (content: string): OscSegment[] => {
   return segments.length > 0 ? segments : [{ text: "" }]
 }
 
-const emptyStyle = (): AnsiStyle => ({ decorations: [] })
-
-const isCombiningCodePoint = (codePoint: number) =>
-  (codePoint >= 0x0300 && codePoint <= 0x036f) ||
-  (codePoint >= 0x1ab0 && codePoint <= 0x1aff) ||
-  (codePoint >= 0x1dc0 && codePoint <= 0x1dff) ||
-  (codePoint >= 0x20d0 && codePoint <= 0x20ff) ||
-  (codePoint >= 0xfe20 && codePoint <= 0xfe2f)
-
-const isWideCodePoint = (codePoint: number) =>
-  codePoint >= 0x1100 &&
-  (codePoint <= 0x115f ||
-    codePoint === 0x2329 ||
-    codePoint === 0x232a ||
-    (codePoint >= 0x2e80 && codePoint <= 0xa4cf && codePoint !== 0x303f) ||
-    (codePoint >= 0xac00 && codePoint <= 0xd7a3) ||
-    (codePoint >= 0xf900 && codePoint <= 0xfaff) ||
-    (codePoint >= 0xfe10 && codePoint <= 0xfe19) ||
-    (codePoint >= 0xfe30 && codePoint <= 0xfe6f) ||
-    (codePoint >= 0xff00 && codePoint <= 0xff60) ||
-    (codePoint >= 0xffe0 && codePoint <= 0xffe6) ||
-    (codePoint >= 0x1f300 && codePoint <= 0x1faff) ||
-    (codePoint >= 0x20000 && codePoint <= 0x3fffd))
-
-const getCellWidth = (char: string) => {
-  const codePoint = char.codePointAt(0) ?? 0
-
-  if (isCombiningCodePoint(codePoint)) {
-    return 0
-  }
-
-  return isWideCodePoint(codePoint) ? 2 : 1
-}
-
-const cloneStyle = (style: AnsiStyle): AnsiStyle => ({
-  ...(style.foreground ? { foreground: style.foreground } : {}),
-  ...(style.background ? { background: style.background } : {}),
-  ...(style.label ? { label: style.label } : {}),
-  decorations: [...style.decorations],
-})
 
 const toRgb = (value: string | null | undefined) => {
   if (!value) {
@@ -419,7 +362,7 @@ const rgbToSgrValues = (value: string) => {
   return match ? [match[1], match[2], match[3]] : null
 }
 
-const decorationToSgrCode = (decoration: AnsiTextDecoration) => {
+const decorationToSgrCode = (decoration: CanvasTextDecoration) => {
   switch (decoration) {
     case "bold":
       return "1"
@@ -524,82 +467,4 @@ export const stripAnsi = (content: string) =>
     .map((segment) => Anser.ansiToText(segment.text))
     .join("")
 
-export const ansiLinesToCells = (
-  lines: AnsiLine[],
-  cols: number,
-  minRows = lines.length,
-): AnsiCell[][] => {
-  const safeCols = Math.max(1, cols)
-  const createEmptyRow = (): AnsiCell[] =>
-    Array.from({ length: safeCols }, () => ({
-      char: " ",
-      style: emptyStyle(),
-    }))
-  const rows: AnsiCell[][] = []
-
-  const appendRow = () => {
-    const nextRow = createEmptyRow()
-    rows.push(nextRow)
-    return nextRow
-  }
-
-  for (const line of lines) {
-    let cells = appendRow()
-    let colIndex = 0
-
-    for (const run of line) {
-      for (const char of Array.from(run.text)) {
-        const cellSourceText = withAnsiSource(char, run.style)
-        const cellWidth = Math.min(getCellWidth(char), safeCols)
-
-        if (cellWidth === 0) {
-          const previousIndex = Math.max(0, colIndex - 1)
-          cells[previousIndex] = {
-            ...cells[previousIndex],
-            char: `${cells[previousIndex].char}${char}`,
-            sourceText: `${cells[previousIndex].sourceText ?? ""}${cellSourceText}`,
-          }
-          continue
-        }
-
-        if (colIndex > 0 && colIndex + cellWidth > safeCols) {
-          cells = appendRow()
-          colIndex = 0
-        }
-
-        cells[colIndex] = {
-          char,
-          style: cloneStyle(run.style),
-          width: cellWidth,
-          sourceText: cellSourceText,
-        }
-
-        for (let offset = 1; offset < cellWidth; offset += 1) {
-          cells[colIndex + offset] = {
-            char: "",
-            style: cloneStyle(run.style),
-            continuation: true,
-          }
-        }
-
-        colIndex += cellWidth
-
-        if (colIndex >= safeCols) {
-          cells = appendRow()
-          colIndex = 0
-        }
-      }
-    }
-
-    if (colIndex === 0 && rows.length > 1 && line.length > 0) {
-      rows.pop()
-    }
-  }
-
-  while (rows.length < Math.max(minRows, 1)) {
-    rows.push(createEmptyRow())
-  }
-
-  return rows
-}
-
+export const ansiLinesToCells = canvasLinesToCells

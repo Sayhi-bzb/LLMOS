@@ -1,9 +1,10 @@
-import type { AnsiStyle } from "@/lib/ansi"
+import type { CanvasStyle } from "@/lib/canvas-text"
 
 export interface AsciiCanvasProps {
   content: string
   className?: string
   autoScroll?: boolean
+  isStreaming?: boolean
   cols?: number
   minRows?: number
   maxColumns?: number
@@ -39,7 +40,7 @@ export interface ViewportMetrics {
 
 export interface CellRun {
   text: string
-  style: AnsiStyle
+  style: CanvasStyle
   startCol: number
 }
 

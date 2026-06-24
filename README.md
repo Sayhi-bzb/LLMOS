@@ -25,7 +25,7 @@ LITELLM_MODEL=your-litellm-model-name
 npm run dev
 ```
 
-The page persists only the System prompt in browser `localStorage`. URL, key, and model are server-side `.env.local` settings.
+The System prompt is stored in `prompts/system.md` and can be edited from the page. URL, key, and model are server-side `.env.local` settings.
 
 ## Adding components
 
