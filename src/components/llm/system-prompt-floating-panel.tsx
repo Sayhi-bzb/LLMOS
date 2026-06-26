@@ -1,8 +1,24 @@
-import { Save, Settings2, X } from "lucide-react"
-import { useEffect, useState } from "react"
+import { Save, Settings2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { IconTooltipButton } from "@/components/ui/icon-tooltip-button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface SystemPromptFloatingPanelProps {
   systemPromptDraft: string
@@ -21,73 +37,59 @@ export function SystemPromptFloatingPanel({
   onSystemPromptChange,
   onSaveSystemPrompt,
 }: SystemPromptFloatingPanelProps) {
-  const [open, setOpen] = useState(false)
   const estimatedSystemPromptTokens = estimateTokenCount(systemPromptDraft)
   const statusText = isSavingSystemPrompt
     ? "Saving"
     : hasUnsavedSystemPrompt
       ? "Unsaved changes"
       : "Saved"
-
-  useEffect(() => {
-    if (!open) {
-      return
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false)
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [open])
+  const tooltip = `System prompt · ~${estimatedSystemPromptTokens.toLocaleString()} tokens · ${statusText}`
 
   return (
     <div className="fixed right-4 top-24 z-40 flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2">
-      <IconTooltipButton
-        aria-expanded={open}
-        aria-label={open ? "Close system prompt" : "Open system prompt"}
-        className="shadow-sm"
-        onClick={() => setOpen((current) => !current)}
-        tooltip={`System prompt · ~${estimatedSystemPromptTokens.toLocaleString()} tokens · ${statusText}`}
-        type="button"
-        variant={hasUnsavedSystemPrompt ? "default" : "secondary"}
-      >
-        <Settings2 className="size-4" aria-hidden="true" />
-      </IconTooltipButton>
+      <Dialog>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DialogTrigger asChild>
+                <Button
+                  aria-label="Open system prompt"
+                  className="shadow-sm"
+                  size="icon"
+                  type="button"
+                  variant={hasUnsavedSystemPrompt ? "default" : "secondary"}
+                >
+                  <Settings2 className="size-4" aria-hidden="true" />
+                </Button>
+              </DialogTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="left">{tooltip}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
-      {open ? (
-        <section className="w-[min(360px,calc(100vw-2rem))] border border-border bg-card p-3 text-card-foreground shadow-lg">
-          <div className="mb-2 flex items-start justify-between gap-3">
-            <div>
-              <div className="text-sm font-medium">System prompt</div>
-              <div className="mt-0.5 text-xs text-muted-foreground">
-                ~{estimatedSystemPromptTokens.toLocaleString()} tokens · {statusText}
-              </div>
+        <DialogContent className="max-h-[calc(100vh-4rem)] overflow-hidden sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>System prompt</DialogTitle>
+            <DialogDescription>
+              ~{estimatedSystemPromptTokens.toLocaleString()} tokens · {statusText}
+            </DialogDescription>
+          </DialogHeader>
+
+          <ScrollArea className="min-h-0 max-h-[60vh] pr-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="system-prompt">Prompt</Label>
+              <Textarea
+                id="system-prompt"
+                className="min-h-48 max-h-[50vh] resize-y text-sm leading-6"
+                disabled={isLoading}
+                onChange={(event) => onSystemPromptChange(event.target.value)}
+                placeholder="Optional behavior or output format instructions"
+                value={systemPromptDraft}
+              />
             </div>
-            <Button
-              aria-label="Close system prompt"
-              onClick={() => setOpen(false)}
-              size="icon"
-              type="button"
-              variant="ghost"
-            >
-              <X className="size-4" aria-hidden="true" />
-            </Button>
-          </div>
+          </ScrollArea>
 
-          <textarea
-            className="min-h-48 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm font-normal leading-6 outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={isLoading}
-            onChange={(event) => onSystemPromptChange(event.target.value)}
-            placeholder="Optional behavior or output format instructions"
-            value={systemPromptDraft}
-          />
-
-          <div className="mt-3 flex items-center justify-between gap-3">
+          <DialogFooter className="items-center justify-between sm:justify-between">
             <span className="text-xs text-muted-foreground">{statusText}</span>
             <Button
               disabled={!hasUnsavedSystemPrompt || isSavingSystemPrompt}
@@ -98,9 +100,9 @@ export function SystemPromptFloatingPanel({
               <Save className="size-4" aria-hidden="true" />
               Save
             </Button>
-          </div>
-        </section>
-      ) : null}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -1,8 +1,21 @@
-import { Bug, X } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { Bug } from "lucide-react"
+import { useMemo } from "react"
 
 import { Button } from "@/components/ui/button"
-import { IconTooltipButton } from "@/components/ui/icon-tooltip-button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import type { LlmTurnFrame } from "@/components/llm/types"
 import { parseCanvasContent } from "@/lib/canvas-content"
 import { canvasLinesToCells } from "@/lib/canvas-text"
@@ -24,7 +37,6 @@ const cellsToText = (cells: ReturnType<typeof canvasLinesToCells>) =>
 const preview = (value: string) => value || "<empty>"
 
 export function LlmDebugPanel({ frame, isStreaming }: LlmDebugPanelProps) {
-  const [open, setOpen] = useState(false)
   const diagnostics = useMemo(() => {
     const frameContent = frame?.content ?? ""
     const rawFinalContent = frame?.rawFinalContent ?? ""
@@ -41,59 +53,39 @@ export function LlmDebugPanel({ frame, isStreaming }: LlmDebugPanelProps) {
     }
   }, [frame, isStreaming])
 
-  useEffect(() => {
-    if (!open) {
-      return
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false)
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [open])
-
   if (!import.meta.env.DEV || !frame) {
     return null
   }
 
   return (
     <div className="fixed right-4 top-[9.5rem] z-40 flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2">
-      <IconTooltipButton
-        aria-expanded={open}
-        aria-label={open ? "Close debug panel" : "Open debug panel"}
-        className="shadow-sm"
-        onClick={() => setOpen((current) => !current)}
-        tooltip={`Debug · ${frame.status}`}
-        type="button"
-        variant="secondary"
-      >
-        <Bug className="size-4" aria-hidden="true" />
-      </IconTooltipButton>
+      <Dialog>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DialogTrigger asChild>
+                <Button
+                  aria-label="Open debug panel"
+                  className="shadow-sm"
+                  size="icon"
+                  type="button"
+                  variant="secondary"
+                >
+                  <Bug className="size-4" aria-hidden="true" />
+                </Button>
+              </DialogTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="left">Debug · {frame.status}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
-      {open ? (
-        <section className="max-h-[calc(100vh-9rem)] w-[min(720px,calc(100vw-2rem))] overflow-auto border border-amber-300 bg-amber-50 p-3 text-xs text-amber-950 shadow-lg">
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-              <div className="font-medium">Debug output pipeline</div>
-              <div className="mt-0.5 text-amber-800">
-                {frame.status} · frame {diagnostics.frameContent.length.toLocaleString()} chars
-              </div>
-            </div>
-            <Button
-              aria-label="Close debug panel"
-              onClick={() => setOpen(false)}
-              size="icon"
-              type="button"
-              variant="ghost"
-            >
-              <X className="size-4" aria-hidden="true" />
-            </Button>
-          </div>
+        <DialogContent className="max-h-[calc(100vh-4rem)] overflow-auto border-amber-300 bg-amber-50 text-xs text-amber-950 sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Debug output pipeline</DialogTitle>
+            <DialogDescription className="text-amber-800">
+              {frame.status} · frame {diagnostics.frameContent.length.toLocaleString()} chars
+            </DialogDescription>
+          </DialogHeader>
 
           <div className="grid gap-3 md:grid-cols-2">
             <DebugBlock label="rawFinalContent" value={diagnostics.rawFinalContent} />
@@ -101,7 +93,7 @@ export function LlmDebugPanel({ frame, isStreaming }: LlmDebugPanelProps) {
             <DebugBlock label="markdownStable" value={diagnostics.markdownStable} />
             <DebugBlock label="markdownPending" value={diagnostics.markdownPending} />
             <DebugBlock label="canvasText" value={diagnostics.canvasText} />
-            <div className="rounded border border-amber-200 bg-white/70 p-2 font-mono">
+            <div className="rounded-none border border-amber-200 bg-white/70 p-2 font-mono">
               <div>status: {frame.status}</div>
               <div>streaming: {String(isStreaming)}</div>
               <div>raw length: {diagnostics.rawFinalContent.length}</div>
@@ -113,15 +105,15 @@ export function LlmDebugPanel({ frame, isStreaming }: LlmDebugPanelProps) {
               <div>finalCompletionLength: {frame.debug?.finalCompletionLength ?? "n/a"}</div>
             </div>
           </div>
-        </section>
-      ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
 
 function DebugBlock({ label, value }: { label: string; value: string }) {
   return (
-    <section className="rounded border border-amber-200 bg-white/70 p-2">
+    <section className="rounded-none border border-amber-200 bg-white/70 p-2">
       <div className="mb-1 font-medium">{label}</div>
       <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-5">
         {preview(value)}
@@ -129,4 +121,3 @@ function DebugBlock({ label, value }: { label: string; value: string }) {
     </section>
   )
 }
-
