@@ -1,6 +1,7 @@
 import { Loader2, Save, Settings, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { IconTooltipButton } from "@/components/ui/icon-tooltip-button"
 import type { LlmConfigDraft } from "@/components/llm/types"
 
 interface LlmConfigPanelProps {
@@ -30,10 +31,11 @@ export function LlmConfigPanel({
 }: LlmConfigPanelProps) {
   return (
     <div className="fixed right-4 top-4 z-50 flex flex-col items-end gap-2">
-      <Button
+      <IconTooltipButton
         aria-expanded={configOpen}
-        aria-label="Open LLM config"
+        aria-label={configOpen ? "Close LLM settings" : "Open LLM settings"}
         onClick={() => onOpenChange(!configOpen)}
+        tooltip="LLM settings"
         type="button"
         variant="secondary"
       >
@@ -42,8 +44,7 @@ export function LlmConfigPanel({
         ) : (
           <Settings className="size-4" aria-hidden="true" />
         )}
-        LLM
-      </Button>
+      </IconTooltipButton>
 
       {configOpen ? (
         <div className="w-[min(24rem,calc(100vw-2rem))] bg-popover p-3 text-popover-foreground">
@@ -111,3 +112,4 @@ export function LlmConfigPanel({
     </div>
   )
 }
+

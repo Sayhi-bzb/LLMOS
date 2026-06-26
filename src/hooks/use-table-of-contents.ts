@@ -4,4 +4,5 @@ export type TableOfContentsItem = {
   id: string
   title: string
   depth?: number
+  status?: "streaming" | "complete" | "error" | "stopped"
 }

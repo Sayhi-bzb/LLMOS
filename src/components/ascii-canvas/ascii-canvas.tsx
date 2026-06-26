@@ -18,8 +18,10 @@ const horizontalOverflowBuffer = 2
 export function AsciiCanvas({
   content,
   className,
+  autoHeight = false,
   autoScroll = true,
   isStreaming = false,
+  maxHeight,
   onPromptHref,
   cols,
   minRows = 18,
@@ -28,6 +30,7 @@ export function AsciiCanvas({
   const viewportRef = useRef<HTMLDivElement>(null)
   const measureRef = useRef<HTMLSpanElement>(null)
   const shouldStickToBottomRef = useRef(true)
+  const previousContentRef = useRef(content)
   const { metrics, viewportMetrics } = useCanvasMetrics(measureRef, viewportRef)
 
   const availableWidth = Math.max(
@@ -43,7 +46,9 @@ export function AsciiCanvas({
     Math.floor((availableWidth - horizontalOverflowBuffer) / metrics.charWidth),
   )
   const gridCols = cols ?? (maxColumns ? Math.min(maxColumns, measuredCols) : measuredCols)
-  const viewportMinRows = Math.max(1, Math.floor(availableHeight / metrics.lineHeight))
+  const viewportMinRows = autoHeight
+    ? minRows
+    : Math.max(1, Math.floor(availableHeight / metrics.lineHeight))
   const gridMinRows = Math.max(minRows, viewportMinRows)
 
   const grid = useMemo(() => {
@@ -54,6 +59,15 @@ export function AsciiCanvas({
   }, [content, gridCols, gridMinRows, isStreaming])
 
   const rows = grid.length
+  const contentHeight =
+    rows * metrics.lineHeight + viewportMetrics.paddingTop + viewportMetrics.paddingBottom
+  const canvasStyle = autoHeight
+    ? {
+        height: `${contentHeight}px`,
+        maxHeight,
+        tabSize: 2,
+      }
+    : { tabSize: 2 }
   const {
     canCopyRawContent,
     contextMenu,
@@ -82,6 +96,14 @@ export function AsciiCanvas({
     () => getSelectionRanges(grid, selection),
     [grid, selection],
   )
+
+  useEffect(() => {
+    if (content.length < previousContentRef.current.length) {
+      shouldStickToBottomRef.current = true
+    }
+
+    previousContentRef.current = content
+  }, [content])
 
   useEffect(() => {
     if (!autoScroll || !shouldStickToBottomRef.current) {
@@ -125,7 +147,7 @@ export function AsciiCanvas({
       onScroll={updateStickToBottom}
       ref={viewportRef}
       role="application"
-      style={{ tabSize: 2 }}
+      style={canvasStyle}
       tabIndex={0}
     >
       <span

@@ -3,8 +3,10 @@ import type { CanvasStyle } from "@/lib/canvas-text"
 export interface AsciiCanvasProps {
   content: string
   className?: string
+  autoHeight?: boolean
   autoScroll?: boolean
   isStreaming?: boolean
+  maxHeight?: string
   onPromptHref?: (prompt: string) => void
   cols?: number
   minRows?: number

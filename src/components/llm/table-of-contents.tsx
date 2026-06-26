@@ -26,11 +26,15 @@ type TableOfContentsContextValue = {
   items: TocItemData[]
   activeId?: string
   activeIndex: number
+  spinnerTick: number
   onItemClick?: (id: string) => void
 }
 
 const TableOfContentsContext =
   React.createContext<TableOfContentsContextValue | null>(null)
+
+const tocSpinnerFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+const tocSpinnerIntervalMs = 140
 
 const tableOfContentsStyles = {
   shell: "relative pl-1",
@@ -41,7 +45,9 @@ const tableOfContentsStyles = {
   track: "text-muted-foreground/25",
   activeTrack: "text-foreground",
   item:
-    "relative z-[1] block w-fit scroll-m-4 rounded-sm py-1 pr-2 text-[0.8125rem] leading-5 transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+    "relative z-[1] flex w-fit scroll-m-4 items-center gap-1.5 rounded-sm py-1 pr-2 text-[0.8125rem] leading-5 transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+  itemIcon: "inline-flex w-4 shrink-0 justify-center font-mono",
+  itemLoading: "text-danger hover:text-danger",
   itemActive: "text-foreground",
   itemTrail: "text-foreground",
   itemIdle: "text-muted-foreground/60 hover:text-muted-foreground",
@@ -63,6 +69,40 @@ function useTableOfContentsContext() {
   return context
 }
 
+function useTocSpinnerTick(enabled: boolean) {
+  const [tick, setTick] = React.useState(0)
+
+  React.useEffect(() => {
+    if (!enabled) {
+      setTick(0)
+      return
+    }
+
+    const intervalId = window.setInterval(
+      () => setTick((currentTick) => currentTick + 1),
+      tocSpinnerIntervalMs,
+    )
+
+    return () => window.clearInterval(intervalId)
+  }, [enabled])
+
+  return tick
+}
+
+function getTocStatusIcon(status: TocItemData["status"], spinnerTick: number) {
+  switch (status) {
+    case "streaming":
+      return tocSpinnerFrames[spinnerTick % tocSpinnerFrames.length]
+    case "complete":
+      return ""
+    case "error":
+      return ""
+    case "stopped":
+      return ""
+    default:
+      return null
+  }
+}
 type TableOfContentsProps = React.ComponentProps<"nav"> & {
   items: TocItemData[]
   activeId?: string
@@ -80,15 +120,18 @@ function TableOfContents({
   const activeIndex = activeId
     ? items.findIndex((item) => item.id === activeId)
     : -1
+  const hasStreamingItem = items.some((item) => item.status === "streaming")
+  const spinnerTick = useTocSpinnerTick(hasStreamingItem)
 
   const contextValue = React.useMemo(
     () => ({
       items,
       activeId,
       activeIndex,
+      spinnerTick,
       onItemClick,
     }),
-    [items, activeId, activeIndex, onItemClick]
+    [items, activeId, activeIndex, spinnerTick, onItemClick]
   )
 
   return (
@@ -443,10 +486,12 @@ function TableOfContentsItem({
   index,
   className,
 }: TableOfContentsItemProps) {
-  const { activeId, activeIndex, onItemClick } = useTableOfContentsContext()
+  const { activeId, activeIndex, spinnerTick, onItemClick } = useTableOfContentsContext()
   const depth = item.depth ?? 2
   const isActive = item.id === activeId
   const inTrail = activeIndex >= 0 && index <= activeIndex
+  const statusIcon = getTocStatusIcon(item.status, spinnerTick)
+  const isLoading = item.status === "streaming"
 
   const handleClick = React.useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>) => {
@@ -474,10 +519,16 @@ function TableOfContentsItem({
           ? tableOfContentsStyles.itemTrail
           : tableOfContentsStyles.itemIdle,
         isActive && tableOfContentsStyles.itemActive,
+        isLoading && tableOfContentsStyles.itemLoading,
         className
       )}
     >
-      {item.title}
+      {statusIcon ? (
+        <span aria-hidden="true" className={tableOfContentsStyles.itemIcon}>
+          {statusIcon}
+        </span>
+      ) : null}
+      <span className="truncate">{item.title}</span>
     </a>
   )
 }
@@ -560,6 +611,8 @@ function TableOfContentsMobile({
   const progress =
     activeIndex >= 0 ? (activeIndex + 1) / Math.max(1, items.length) : 0
   const showActiveTitle = activeIndex >= 0 && !open
+  const hasStreamingItem = items.some((item) => item.status === "streaming")
+  const spinnerTick = useTocSpinnerTick(hasStreamingItem)
 
   const handleItemClick = React.useCallback(
     (id: string) => {
@@ -596,9 +649,10 @@ function TableOfContentsMobile({
       items,
       activeId,
       activeIndex,
+      spinnerTick,
       onItemClick: handleItemClick,
     }),
-    [items, activeId, activeIndex, handleItemClick]
+    [items, activeId, activeIndex, spinnerTick, handleItemClick]
   )
 
   return (
@@ -710,5 +764,4 @@ export {
 }
 
 export type { TableOfContentsItem as TocItem } from "@/hooks/use-table-of-contents"
-
 

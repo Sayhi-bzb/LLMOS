@@ -2,6 +2,7 @@ import { Save, Settings2, X } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/button"
+import { IconTooltipButton } from "@/components/ui/icon-tooltip-button"
 
 interface SystemPromptFloatingPanelProps {
   systemPromptDraft: string
@@ -46,17 +47,17 @@ export function SystemPromptFloatingPanel({
 
   return (
     <div className="fixed right-4 top-24 z-40 flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2">
-      <Button
+      <IconTooltipButton
         aria-expanded={open}
+        aria-label={open ? "Close system prompt" : "Open system prompt"}
         className="shadow-sm"
         onClick={() => setOpen((current) => !current)}
+        tooltip={`System prompt · ~${estimatedSystemPromptTokens.toLocaleString()} tokens · ${statusText}`}
         type="button"
         variant={hasUnsavedSystemPrompt ? "default" : "secondary"}
       >
         <Settings2 className="size-4" aria-hidden="true" />
-        System
-        <span className="text-xs opacity-75">~{estimatedSystemPromptTokens.toLocaleString()}</span>
-      </Button>
+      </IconTooltipButton>
 
       {open ? (
         <section className="w-[min(360px,calc(100vw-2rem))] border border-border bg-card p-3 text-card-foreground shadow-lg">
@@ -126,3 +127,4 @@ function estimateTokenCount(text: string) {
       Math.max(nonWhitespaceCharacterCount / 4, whitespaceSeparatedTokenCount),
   )
 }
+

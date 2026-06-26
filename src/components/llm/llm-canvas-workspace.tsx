@@ -4,11 +4,14 @@ import { AsciiCanvas } from "@/components/ascii-canvas"
 import { LlmDebugPanel } from "@/components/llm/llm-debug-panel"
 import { PromptConsole } from "@/components/llm/prompt-console"
 import { SystemPromptFloatingPanel } from "@/components/llm/system-prompt-floating-panel"
+import { ThreadSwitcher } from "@/components/llm/thread-switcher"
 import { TurnFrameToc } from "@/components/llm/turn-frame-toc"
-import type { LlmTurnFrame } from "@/components/llm/types"
+import type { LlmThreadSummary, LlmTurnFrame } from "@/components/llm/types"
 
 interface LlmCanvasWorkspaceProps {
   canvasContent: string
+  threads: LlmThreadSummary[]
+  activeThreadId: string | null
   frames: LlmTurnFrame[]
   selectedFrameId: string | null
   systemPromptDraft: string
@@ -18,6 +21,8 @@ interface LlmCanvasWorkspaceProps {
   isLoading: boolean
   error?: Error
   canSubmit: boolean
+  onSelectThread: (threadId: string) => void
+  onNewThread: () => void
   onSelectFrame: (frameId: string) => void
   onSystemPromptChange: (value: string) => void
   onSaveSystemPrompt: () => void
@@ -31,6 +36,8 @@ interface LlmCanvasWorkspaceProps {
 
 export function LlmCanvasWorkspace({
   canvasContent,
+  threads,
+  activeThreadId,
   frames,
   selectedFrameId,
   systemPromptDraft,
@@ -40,6 +47,8 @@ export function LlmCanvasWorkspace({
   isLoading,
   error,
   canSubmit,
+  onSelectThread,
+  onNewThread,
   onSelectFrame,
   onSystemPromptChange,
   onSaveSystemPrompt,
@@ -55,6 +64,14 @@ export function LlmCanvasWorkspace({
 
   return (
     <section className="mx-auto flex min-h-[calc(100svh-3rem)] w-full max-w-6xl min-w-0 flex-col gap-4">
+      <ThreadSwitcher
+        threads={threads}
+        activeThreadId={activeThreadId}
+        isLoading={isLoading}
+        onSelectThread={onSelectThread}
+        onNewThread={onNewThread}
+        variant="mobile"
+      />
       <TurnFrameToc
         frames={frames}
         selectedFrameId={selectedFrameId}
@@ -66,6 +83,16 @@ export function LlmCanvasWorkspace({
         selectedFrameId={selectedFrameId}
         onSelectFrame={onSelectFrame}
         variant="desktop"
+        header={
+          <ThreadSwitcher
+            threads={threads}
+            activeThreadId={activeThreadId}
+            isLoading={isLoading}
+            onSelectThread={onSelectThread}
+            onNewThread={onNewThread}
+            variant="desktop"
+          />
+        }
       />
       <div className="flex min-w-0 flex-1 flex-col gap-4">
         <SystemPromptFloatingPanel
@@ -76,10 +103,12 @@ export function LlmCanvasWorkspace({
           onSystemPromptChange={onSystemPromptChange}
           onSaveSystemPrompt={onSaveSystemPrompt}
         />
-        <div className="flex min-h-0 flex-1 items-center justify-center">
+        <div className="flex min-h-0 flex-1 items-start justify-center py-2">
           <AsciiCanvas
             content={canvasContent}
-            className="h-[420px] w-full"
+            autoHeight
+            maxHeight="clamp(12rem, calc(100svh - 20rem), 40rem)"
+            className="min-h-48 w-full"
             isStreaming={isCanvasStreaming}
             onPromptHref={onPromptHref}
           />

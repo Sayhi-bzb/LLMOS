@@ -16,6 +16,7 @@ interface TurnFrameTocProps {
   selectedFrameId: string | null
   onSelectFrame: (frameId: string) => void
   variant: TurnFrameTocVariant
+  header?: React.ReactNode
   className?: string
 }
 
@@ -24,24 +25,26 @@ export function TurnFrameToc({
   selectedFrameId,
   onSelectFrame,
   variant,
+  header,
   className,
 }: TurnFrameTocProps) {
   const items = React.useMemo(
     () =>
-      frames.map<TocItem>((frame, index) => ({
+      frames.map<TocItem>((frame) => ({
         id: frame.id,
-        title: `${String(index + 1).padStart(2, "0")} ${frame.title} ${getStatusLabel(frame.status)}`,
+        title: frame.title,
         depth: 2,
+        status: frame.status,
       })),
     [frames]
   )
 
-  if (items.length === 0) {
+  if (items.length === 0 && !header) {
     return null
   }
 
   if (variant === "mobile") {
-    return (
+    return items.length ? (
       <TableOfContentsMobile
         items={items}
         activeId={selectedFrameId ?? undefined}
@@ -49,7 +52,7 @@ export function TurnFrameToc({
         title="Frames"
         className={cn("lg:hidden", className)}
       />
-    )
+    ) : null
   }
 
   return (
@@ -60,29 +63,17 @@ export function TurnFrameToc({
       )}
     >
       <div className="max-h-[calc(100svh-6rem)]">
-        <TableOfContents
-          items={items}
-          activeId={selectedFrameId ?? undefined}
-          onItemClick={onSelectFrame}
-        >
-          <TableOfContentsList />
-        </TableOfContents>
+        {header}
+        {items.length ? (
+          <TableOfContents
+            items={items}
+            activeId={selectedFrameId ?? undefined}
+            onItemClick={onSelectFrame}
+          >
+            <TableOfContentsList />
+          </TableOfContents>
+        ) : null}
       </div>
     </aside>
   )
 }
-
-function getStatusLabel(status: LlmTurnFrame["status"]) {
-  switch (status) {
-    case "streaming":
-      return "live"
-    case "complete":
-      return "done"
-    case "error":
-      return "err"
-    case "stopped":
-      return "stop"
-  }
-}
-
-

@@ -2,6 +2,7 @@ import { Bug, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
+import { IconTooltipButton } from "@/components/ui/icon-tooltip-button"
 import type { LlmTurnFrame } from "@/components/llm/types"
 import { parseCanvasContent } from "@/lib/canvas-content"
 import { canvasLinesToCells } from "@/lib/canvas-text"
@@ -62,17 +63,17 @@ export function LlmDebugPanel({ frame, isStreaming }: LlmDebugPanelProps) {
 
   return (
     <div className="fixed right-4 top-[9.5rem] z-40 flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2">
-      <Button
+      <IconTooltipButton
         aria-expanded={open}
+        aria-label={open ? "Close debug panel" : "Open debug panel"}
         className="shadow-sm"
         onClick={() => setOpen((current) => !current)}
+        tooltip={`Debug · ${frame.status}`}
         type="button"
         variant="secondary"
       >
         <Bug className="size-4" aria-hidden="true" />
-        Debug
-        <span className="text-xs opacity-75">{frame.status}</span>
-      </Button>
+      </IconTooltipButton>
 
       {open ? (
         <section className="max-h-[calc(100vh-9rem)] w-[min(720px,calc(100vw-2rem))] overflow-auto border border-amber-300 bg-amber-50 p-3 text-xs text-amber-950 shadow-lg">
