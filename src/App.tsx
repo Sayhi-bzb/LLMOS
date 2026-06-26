@@ -27,6 +27,12 @@ const formatPromptWithSourceScreen = (sourceContent: string, prompt: string) => 
   "用户操作:",
   prompt.trim(),
 ].join("\n")
+const formatPendingScreen = (sourceContent: string, actionPrompt: string) => [
+  sourceContent.trimEnd(),
+  "",
+  `<span fg-muted>正在处理：</span> ${actionPrompt}`,
+  "<span fg-accent>screen repainting...</span>",
+].join("\n")
 
 const getFrameTitle = (prompt: string) => {
   const title = prompt.split(/\r?\n/)[0]?.trim() || "Untitled turn"
@@ -220,7 +226,16 @@ function App() {
 
   const selectedFrame = frames.find((frame) => frame.id === selectedFrameId)
   const isInitialScreenVisible = !selectedFrame && !isLoading
-  const canvasContent = selectedFrame ? selectedFrame.content : isLoading ? pendingOutput : initialScreenContent
+  const canvasContent = selectedFrame
+    ? selectedFrame.status === "streaming" && !selectedFrame.content
+      ? formatPendingScreen(
+          selectedFrame.sourceContent ?? initialScreenContent,
+          selectedFrame.actionPrompt ?? selectedFrame.title,
+        )
+      : selectedFrame.content
+    : isLoading
+      ? pendingOutput
+      : initialScreenContent
   const canSubmit = input.trim().length > 0 && !isLoading
   const hasUnsavedSystemPrompt = systemPromptDraft !== savedSystemPrompt
 
@@ -307,6 +322,8 @@ function App() {
       title: getFrameTitle(actionPrompt),
       prompt: nextPrompt,
       content: "",
+      sourceContent: options?.sourceContent ?? canvasContent,
+      actionPrompt,
       createdAt: Date.now(),
       status: "streaming",
     }

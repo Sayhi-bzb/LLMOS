@@ -4,6 +4,8 @@ export interface LlmTurnFrame {
   prompt: string
   content: string
   rawFinalContent?: string
+  sourceContent?: string
+  actionPrompt?: string
   debug?: {
     lastCompletionLength?: number
     finalCompletionLength?: number
@@ -31,3 +33,4 @@ export interface LlmConfigDraft {
   apiKey: string
   model: string
 }
+
