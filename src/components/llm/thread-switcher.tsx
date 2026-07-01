@@ -55,7 +55,7 @@ export function ThreadSwitcher({
   }
 
   return (
-    <div className={cn("mb-5 hidden xl:block", className)}>
+    <div className={cn("hidden xl:block", className)}>
       <div className="mb-3 flex items-center justify-between gap-2 font-mono text-[0.6875rem] leading-4 tracking-wide text-muted-foreground uppercase">
         <span className="inline-flex items-center gap-2">
           <Rows3 className="size-3.5" aria-hidden="true" />
@@ -72,7 +72,7 @@ export function ThreadSwitcher({
           <Plus className="size-3.5" aria-hidden="true" />
         </Button>
       </div>
-      <ScrollArea className="max-h-56 pr-2">
+      <ScrollArea className="max-h-[min(14rem,32svh)] pr-2">
         <div className="flex flex-col gap-1">
           {threads.length ? (
             threads.map((thread) => (
@@ -106,9 +106,10 @@ function ThreadButton({ thread, active, onClick }: ThreadButtonProps) {
       type="button"
       data-active={active}
       className={cn(
-        "group min-w-36 rounded-md px-2 py-1.5 text-left transition-colors",
-        "hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40",
-        active ? "bg-foreground text-background" : "text-muted-foreground"
+        "group min-w-36 rounded-md px-2 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40",
+        active
+          ? "bg-foreground text-background"
+          : "text-muted-foreground hover:bg-muted/60"
       )}
       onClick={onClick}
     >

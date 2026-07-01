@@ -46,64 +46,61 @@ export function SystemPromptFloatingPanel({
   const tooltip = `System prompt · ~${estimatedSystemPromptTokens.toLocaleString()} tokens · ${statusText}`
 
   return (
-    <div className="fixed right-4 top-24 z-40 flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2">
-      <Dialog>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <DialogTrigger asChild>
-                <Button
-                  aria-label="Open system prompt"
-                  className="shadow-sm"
-                  size="icon"
-                  type="button"
-                  variant={hasUnsavedSystemPrompt ? "default" : "secondary"}
-                >
-                  <Settings2 className="size-4" aria-hidden="true" />
-                </Button>
-              </DialogTrigger>
-            </TooltipTrigger>
-            <TooltipContent side="left">{tooltip}</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+    <Dialog>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogTrigger asChild>
+              <Button
+                aria-label="Open system prompt"
+                size="icon"
+                type="button"
+                variant={hasUnsavedSystemPrompt ? "default" : "secondary"}
+              >
+                <Settings2 className="size-4" aria-hidden="true" />
+              </Button>
+            </DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent>{tooltip}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
-        <DialogContent className="max-h-[calc(100vh-4rem)] overflow-hidden sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>System prompt</DialogTitle>
-            <DialogDescription>
-              ~{estimatedSystemPromptTokens.toLocaleString()} tokens · {statusText}
-            </DialogDescription>
-          </DialogHeader>
+      <DialogContent className="max-h-[calc(100vh-4rem)] overflow-hidden sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>System prompt</DialogTitle>
+          <DialogDescription>
+            ~{estimatedSystemPromptTokens.toLocaleString()} tokens · {statusText}
+          </DialogDescription>
+        </DialogHeader>
 
-          <ScrollArea className="min-h-0 max-h-[60vh] pr-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="system-prompt">Prompt</Label>
-              <Textarea
-                id="system-prompt"
-                className="min-h-48 max-h-[50vh] resize-y text-sm leading-6"
-                disabled={isLoading}
-                onChange={(event) => onSystemPromptChange(event.target.value)}
-                placeholder="Optional behavior or output format instructions"
-                value={systemPromptDraft}
-              />
-            </div>
-          </ScrollArea>
+        <ScrollArea className="min-h-0 max-h-[60vh] pr-3">
+          <div className="grid gap-1.5">
+            <Label htmlFor="system-prompt">Prompt</Label>
+            <Textarea
+              id="system-prompt"
+              className="min-h-48 max-h-[50vh] resize-y text-sm leading-6"
+              disabled={isLoading}
+              onChange={(event) => onSystemPromptChange(event.target.value)}
+              placeholder="Optional behavior or output format instructions"
+              value={systemPromptDraft}
+            />
+          </div>
+        </ScrollArea>
 
-          <DialogFooter className="items-center justify-between sm:justify-between">
-            <span className="text-xs text-muted-foreground">{statusText}</span>
-            <Button
-              disabled={!hasUnsavedSystemPrompt || isSavingSystemPrompt}
-              onClick={onSaveSystemPrompt}
-              type="button"
-              variant="secondary"
-            >
-              <Save className="size-4" aria-hidden="true" />
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+        <DialogFooter className="items-center justify-between sm:justify-between">
+          <span className="text-xs text-muted-foreground">{statusText}</span>
+          <Button
+            disabled={!hasUnsavedSystemPrompt || isSavingSystemPrompt}
+            onClick={onSaveSystemPrompt}
+            type="button"
+            variant="secondary"
+          >
+            <Save className="size-4" aria-hidden="true" />
+            Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

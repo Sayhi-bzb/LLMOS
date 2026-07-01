@@ -6,6 +6,7 @@ import {
   TableOfContentsMobile,
   type TocItem,
 } from "@/components/llm/table-of-contents"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import type { LlmTurnFrame } from "@/components/llm/types"
 import { cn } from "@/lib/utils"
 
@@ -62,16 +63,18 @@ export function TurnFrameToc({
         className
       )}
     >
-      <div className="max-h-[calc(100svh-6rem)]">
-        {header}
+      <div className="flex h-[calc(100svh-6rem)] min-h-0 flex-col gap-5">
+        {header ? <div className="shrink-0">{header}</div> : null}
         {items.length ? (
-          <TableOfContents
-            items={items}
-            activeId={selectedFrameId ?? undefined}
-            onItemClick={onSelectFrame}
-          >
-            <TableOfContentsList />
-          </TableOfContents>
+          <ScrollArea className="min-h-0 flex-1 pr-2">
+            <TableOfContents
+              items={items}
+              activeId={selectedFrameId ?? undefined}
+              onItemClick={onSelectFrame}
+            >
+              <TableOfContentsList />
+            </TableOfContents>
+          </ScrollArea>
         ) : null}
       </div>
     </aside>

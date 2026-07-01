@@ -16,7 +16,6 @@ interface AsciiGridProps {
   metrics: TextMetrics
   rows: number
   selectionRanges: RowSelectionRange[]
-  isCtrlPressed: boolean
   onLinkClick: (event: MouseEvent<HTMLAnchorElement>) => void
 }
 
@@ -26,7 +25,6 @@ export function AsciiGrid({
   metrics,
   rows,
   selectionRanges,
-  isCtrlPressed,
   onLinkClick,
 }: AsciiGridProps) {
   return (
@@ -85,7 +83,7 @@ export function AsciiGrid({
                     key={key}
                     onClick={onLinkClick}
                     rel="noreferrer"
-                    style={{ ...style, cursor: isCtrlPressed ? "pointer" : "default" }}
+                    style={{ ...style, cursor: "pointer" }}
                     target="_blank"
                   >
                     {run.text}

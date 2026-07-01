@@ -1,5 +1,5 @@
 import { Loader2, RotateCcw, Send, Square } from "lucide-react"
-import type { FormEvent, KeyboardEvent } from "react"
+import type { FormEvent, KeyboardEvent, ReactNode } from "react"
 
 import { Button } from "@/components/ui/button"
 
@@ -8,6 +8,7 @@ interface PromptConsoleProps {
   isLoading: boolean
   error?: Error
   canSubmit: boolean
+  tools?: ReactNode
   onInputChange: (value: string) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
   onSubmitShortcut: () => void
@@ -20,6 +21,7 @@ export function PromptConsole({
   isLoading,
   error,
   canSubmit,
+  tools,
   onInputChange,
   onSubmit,
   onSubmitShortcut,
@@ -62,6 +64,7 @@ export function PromptConsole({
           )}
         </div>
         <div className="flex items-center gap-2">
+          {tools}
           <Button onClick={onResetThread} type="button" variant="secondary">
             <RotateCcw className="size-4" aria-hidden="true" />
             Reset thread

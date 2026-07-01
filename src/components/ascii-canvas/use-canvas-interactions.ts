@@ -41,24 +41,6 @@ export function useCanvasInteractions({
   const didDragRef = useRef(false)
   const [selection, setSelection] = useState<CellSelection | null>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
-  const [isCtrlPressed, setIsCtrlPressed] = useState(false)
-
-  useEffect(() => {
-    const handleKeyState = (event: globalThis.KeyboardEvent) => {
-      setIsCtrlPressed(event.ctrlKey)
-    }
-    const clearCtrlState = () => setIsCtrlPressed(false)
-
-    window.addEventListener("keydown", handleKeyState)
-    window.addEventListener("keyup", handleKeyState)
-    window.addEventListener("blur", clearCtrlState)
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyState)
-      window.removeEventListener("keyup", handleKeyState)
-      window.removeEventListener("blur", clearCtrlState)
-    }
-  }, [])
 
   useEffect(() => {
     if (!contextMenu) {
@@ -126,7 +108,7 @@ export function useCanvasInteractions({
 
     setContextMenu(null)
 
-    if (event.ctrlKey && isLinkTarget(event.target)) {
+    if (isLinkTarget(event.target)) {
       return
     }
 
@@ -192,7 +174,7 @@ export function useCanvasInteractions({
   }
 
   const handleLinkClick = (event: MouseEvent<HTMLAnchorElement>) => {
-    if (didDragRef.current || !event.ctrlKey) {
+    if (didDragRef.current) {
       event.preventDefault()
       didDragRef.current = false
       return
@@ -251,7 +233,6 @@ export function useCanvasInteractions({
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
-    isCtrlPressed,
     selection,
   }
 }
@@ -259,5 +240,4 @@ export function useCanvasInteractions({
 function isLinkTarget(target: EventTarget | null) {
   return target instanceof Element && Boolean(target.closest("a[href]"))
 }
-
 

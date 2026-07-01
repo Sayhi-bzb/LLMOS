@@ -2,11 +2,16 @@ import type { FormEvent } from "react"
 
 import { AsciiCanvas } from "@/components/ascii-canvas"
 import { LlmDebugPanel } from "@/components/llm/llm-debug-panel"
+import { LlmConfigPanel } from "@/components/llm/llm-config-panel"
 import { PromptConsole } from "@/components/llm/prompt-console"
 import { SystemPromptFloatingPanel } from "@/components/llm/system-prompt-floating-panel"
 import { ThreadSwitcher } from "@/components/llm/thread-switcher"
 import { TurnFrameToc } from "@/components/llm/turn-frame-toc"
-import type { LlmThreadSummary, LlmTurnFrame } from "@/components/llm/types"
+import type {
+  LlmConfigDraft,
+  LlmThreadSummary,
+  LlmTurnFrame,
+} from "@/components/llm/types"
 
 interface LlmCanvasWorkspaceProps {
   canvasContent: string
@@ -17,6 +22,13 @@ interface LlmCanvasWorkspaceProps {
   systemPromptDraft: string
   hasUnsavedSystemPrompt: boolean
   isSavingSystemPrompt: boolean
+  configOpen: boolean
+  configDraft: LlmConfigDraft
+  configStatus: string
+  configError: string
+  hasServerApiKey: boolean
+  isSavingConfig: boolean
+  defaultBaseURL: string
   input: string
   isLoading: boolean
   error?: Error
@@ -26,6 +38,9 @@ interface LlmCanvasWorkspaceProps {
   onSelectFrame: (frameId: string) => void
   onSystemPromptChange: (value: string) => void
   onSaveSystemPrompt: () => void
+  onConfigOpenChange: (open: boolean) => void
+  onConfigChange: (key: keyof LlmConfigDraft, value: string) => void
+  onSaveConfig: () => void
   onInputChange: (value: string) => void
   onPromptHref: (prompt: string) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
@@ -43,6 +58,13 @@ export function LlmCanvasWorkspace({
   systemPromptDraft,
   hasUnsavedSystemPrompt,
   isSavingSystemPrompt,
+  configOpen,
+  configDraft,
+  configStatus,
+  configError,
+  hasServerApiKey,
+  isSavingConfig,
+  defaultBaseURL,
   input,
   isLoading,
   error,
@@ -52,6 +74,9 @@ export function LlmCanvasWorkspace({
   onSelectFrame,
   onSystemPromptChange,
   onSaveSystemPrompt,
+  onConfigOpenChange,
+  onConfigChange,
+  onSaveConfig,
   onInputChange,
   onPromptHref,
   onSubmit,
@@ -95,14 +120,6 @@ export function LlmCanvasWorkspace({
         }
       />
       <div className="flex min-w-0 flex-1 flex-col gap-4">
-        <SystemPromptFloatingPanel
-          systemPromptDraft={systemPromptDraft}
-          hasUnsavedSystemPrompt={hasUnsavedSystemPrompt}
-          isSavingSystemPrompt={isSavingSystemPrompt}
-          isLoading={isLoading}
-          onSystemPromptChange={onSystemPromptChange}
-          onSaveSystemPrompt={onSaveSystemPrompt}
-        />
         <div className="flex min-h-0 flex-1 items-start justify-center py-2">
           <AsciiCanvas
             content={canvasContent}
@@ -124,9 +141,33 @@ export function LlmCanvasWorkspace({
             onSubmitShortcut={onSubmitShortcut}
             onResetThread={onResetThread}
             onStop={onStop}
+            tools={
+              <>
+                <LlmConfigPanel
+                  configOpen={configOpen}
+                  configDraft={configDraft}
+                  configStatus={configStatus}
+                  configError={configError}
+                  hasServerApiKey={hasServerApiKey}
+                  isSavingConfig={isSavingConfig}
+                  defaultBaseURL={defaultBaseURL}
+                  onOpenChange={onConfigOpenChange}
+                  onConfigChange={onConfigChange}
+                  onSave={onSaveConfig}
+                />
+                <SystemPromptFloatingPanel
+                  systemPromptDraft={systemPromptDraft}
+                  hasUnsavedSystemPrompt={hasUnsavedSystemPrompt}
+                  isSavingSystemPrompt={isSavingSystemPrompt}
+                  isLoading={isLoading}
+                  onSystemPromptChange={onSystemPromptChange}
+                  onSaveSystemPrompt={onSaveSystemPrompt}
+                />
+                <LlmDebugPanel frame={selectedFrame} isStreaming={isCanvasStreaming} />
+              </>
+            }
           />
         </div>
-        <LlmDebugPanel frame={selectedFrame} isStreaming={isCanvasStreaming} />
       </div>
     </section>
   )

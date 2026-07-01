@@ -53,61 +53,79 @@ export function LlmDebugPanel({ frame, isStreaming }: LlmDebugPanelProps) {
     }
   }, [frame, isStreaming])
 
-  if (!import.meta.env.DEV || !frame) {
+  if (!import.meta.env.DEV) {
     return null
   }
 
+  if (!frame) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              aria-label="Open debug panel"
+              disabled
+              size="icon"
+              type="button"
+              variant="secondary"
+            >
+              <Bug className="size-4" aria-hidden="true" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Debug · no frame</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
+
   return (
-    <div className="fixed right-4 top-[9.5rem] z-40 flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2">
-      <Dialog>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <DialogTrigger asChild>
-                <Button
-                  aria-label="Open debug panel"
-                  className="shadow-sm"
-                  size="icon"
-                  type="button"
-                  variant="secondary"
-                >
-                  <Bug className="size-4" aria-hidden="true" />
-                </Button>
-              </DialogTrigger>
-            </TooltipTrigger>
-            <TooltipContent side="left">Debug · {frame.status}</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+    <Dialog>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogTrigger asChild>
+              <Button
+                aria-label="Open debug panel"
+                size="icon"
+                type="button"
+                variant="secondary"
+              >
+                <Bug className="size-4" aria-hidden="true" />
+              </Button>
+            </DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent>Debug · {frame.status}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
-        <DialogContent className="max-h-[calc(100vh-4rem)] overflow-auto border-amber-300 bg-amber-50 text-xs text-amber-950 sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Debug output pipeline</DialogTitle>
-            <DialogDescription className="text-amber-800">
-              {frame.status} · frame {diagnostics.frameContent.length.toLocaleString()} chars
-            </DialogDescription>
-          </DialogHeader>
+      <DialogContent className="max-h-[calc(100vh-4rem)] overflow-auto border-amber-300 bg-amber-50 text-xs text-amber-950 sm:max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Debug output pipeline</DialogTitle>
+          <DialogDescription className="text-amber-800">
+            {frame.status} · frame {diagnostics.frameContent.length.toLocaleString()} chars
+          </DialogDescription>
+        </DialogHeader>
 
-          <div className="grid gap-3 md:grid-cols-2">
-            <DebugBlock label="rawFinalContent" value={diagnostics.rawFinalContent} />
-            <DebugBlock label="frameContent" value={diagnostics.frameContent} />
-            <DebugBlock label="markdownStable" value={diagnostics.markdownStable} />
-            <DebugBlock label="markdownPending" value={diagnostics.markdownPending} />
-            <DebugBlock label="canvasText" value={diagnostics.canvasText} />
-            <div className="rounded-none border border-amber-200 bg-white/70 p-2 font-mono">
-              <div>status: {frame.status}</div>
-              <div>streaming: {String(isStreaming)}</div>
-              <div>raw length: {diagnostics.rawFinalContent.length}</div>
-              <div>frame length: {diagnostics.frameContent.length}</div>
-              <div>stable length: {diagnostics.markdownStable.length}</div>
-              <div>pending length: {diagnostics.markdownPending.length}</div>
-              <div>canvas length: {diagnostics.canvasText.length}</div>
-              <div>lastCompletionLength: {frame.debug?.lastCompletionLength ?? "n/a"}</div>
-              <div>finalCompletionLength: {frame.debug?.finalCompletionLength ?? "n/a"}</div>
-            </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <DebugBlock label="rawFinalContent" value={diagnostics.rawFinalContent} />
+          <DebugBlock label="frameContent" value={diagnostics.frameContent} />
+          <DebugBlock label="markdownStable" value={diagnostics.markdownStable} />
+          <DebugBlock label="markdownPending" value={diagnostics.markdownPending} />
+          <DebugBlock label="canvasText" value={diagnostics.canvasText} />
+          <div className="rounded-none border border-amber-200 bg-white/70 p-2 font-mono">
+            <div>status: {frame.status}</div>
+            <div>streaming: {String(isStreaming)}</div>
+            <div>raw length: {diagnostics.rawFinalContent.length}</div>
+            <div>frame length: {diagnostics.frameContent.length}</div>
+            <div>stable length: {diagnostics.markdownStable.length}</div>
+            <div>pending length: {diagnostics.markdownPending.length}</div>
+            <div>canvas length: {diagnostics.canvasText.length}</div>
+            <div>lastCompletionLength: {frame.debug?.lastCompletionLength ?? "n/a"}</div>
+            <div>finalCompletionLength: {frame.debug?.finalCompletionLength ?? "n/a"}</div>
           </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

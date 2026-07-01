@@ -80,7 +80,6 @@ export function AsciiCanvas({
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
-    isCtrlPressed,
     selection,
   } = useCanvasInteractions({
     grid,
@@ -164,7 +163,6 @@ export function AsciiCanvas({
         metrics={metrics}
         rows={rows}
         selectionRanges={selectionRanges}
-        isCtrlPressed={isCtrlPressed}
         onLinkClick={handleLinkClick}
       />
 

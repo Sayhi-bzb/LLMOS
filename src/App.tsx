@@ -1,7 +1,7 @@
 import { useCompletion } from "@ai-sdk/react"
 import { useEffect, useRef, useState, type FormEvent } from "react"
 
-import { LlmCanvasWorkspace, LlmConfigPanel, pendingOutput } from "@/components/llm"
+import { LlmCanvasWorkspace, pendingOutput } from "@/components/llm"
 import type {
   LlmConfigDraft,
   LlmThreadSummary,
@@ -815,19 +815,6 @@ function App() {
 
   return (
     <main className="flex min-h-svh flex-col bg-background p-6 text-foreground">
-      <LlmConfigPanel
-        configOpen={configOpen}
-        configDraft={configDraft}
-        configStatus={configStatus}
-        configError={configError}
-        hasServerApiKey={hasServerApiKey}
-        isSavingConfig={isSavingConfig}
-        defaultBaseURL={defaultLiteLLMBaseURL}
-        onOpenChange={setConfigOpen}
-        onConfigChange={updateConfigDraft}
-        onSave={handleSaveLlmConfig}
-      />
-
       <LlmCanvasWorkspace
         canvasContent={canvasContent}
         threads={threads}
@@ -837,6 +824,13 @@ function App() {
         systemPromptDraft={systemPromptDraft}
         hasUnsavedSystemPrompt={hasUnsavedSystemPrompt}
         isSavingSystemPrompt={isSavingSystemPrompt}
+        configOpen={configOpen}
+        configDraft={configDraft}
+        configStatus={configStatus}
+        configError={configError}
+        hasServerApiKey={hasServerApiKey}
+        isSavingConfig={isSavingConfig}
+        defaultBaseURL={defaultLiteLLMBaseURL}
         input={input}
         isLoading={isLoading}
         error={error}
@@ -850,6 +844,9 @@ function App() {
         onSelectFrame={setSelectedFrameId}
         onSystemPromptChange={setSystemPromptDraft}
         onSaveSystemPrompt={handleSaveSystemPrompt}
+        onConfigOpenChange={setConfigOpen}
+        onConfigChange={updateConfigDraft}
+        onSaveConfig={handleSaveLlmConfig}
         onInputChange={setInput}
         onPromptHref={handlePromptHref}
         onSubmit={handleSubmit}
