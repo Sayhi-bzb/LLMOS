@@ -1,32 +1,25 @@
-import type { ContextMenuState } from "@/components/ascii-canvas/types"
+import {
+  ContextMenuContent,
+  ContextMenuItem,
+} from "@/components/ui/context-menu"
 
 interface AsciiContextMenuProps {
-  contextMenu: ContextMenuState
   copyRawContentDisabled: boolean
   onCopyRawContent: () => void
 }
 
 export function AsciiContextMenu({
-  contextMenu,
   copyRawContentDisabled,
   onCopyRawContent,
 }: AsciiContextMenuProps) {
   return (
-    <div
-      className="fixed z-50 min-w-40 rounded-md border border-slate-200 bg-white p-1 text-sm text-slate-950 shadow-lg"
-      onPointerDownCapture={(event) => event.stopPropagation()}
-      role="menu"
-      style={{ left: contextMenu.x, top: contextMenu.y }}
-    >
-      <button
-        className="flex w-full items-center rounded px-2.5 py-1.5 text-left hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
+    <ContextMenuContent onPointerDownCapture={(event) => event.stopPropagation()}>
+      <ContextMenuItem
         disabled={copyRawContentDisabled}
-        onClick={onCopyRawContent}
-        role="menuitem"
-        type="button"
+        onSelect={onCopyRawContent}
       >
         复制原始内容
-      </button>
-    </div>
+      </ContextMenuItem>
+    </ContextMenuContent>
   )
 }

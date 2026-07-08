@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent, type MouseEvent, type PointerEvent, type RefObject } from "react"
+import { useCallback, useRef, useState, type ClipboardEvent, type KeyboardEvent, type MouseEvent, type PointerEvent, type RefObject } from "react"
 
 import type { CanvasCell } from "@/lib/canvas-text"
 import { parseCanvasHref } from "@/lib/canvas-href"
@@ -7,7 +7,6 @@ import { getSelectedText } from "@/components/ascii-canvas/selection"
 import type {
   CellPosition,
   CellSelection,
-  ContextMenuState,
   TextMetrics,
   ViewportMetrics,
 } from "@/components/ascii-canvas/types"
@@ -40,18 +39,6 @@ export function useCanvasInteractions({
   const selectionStartRef = useRef<CellSelection | null>(null)
   const didDragRef = useRef(false)
   const [selection, setSelection] = useState<CellSelection | null>(null)
-  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
-
-  useEffect(() => {
-    if (!contextMenu) {
-      return
-    }
-
-    const closeContextMenu = () => setContextMenu(null)
-    document.addEventListener("pointerdown", closeContextMenu)
-
-    return () => document.removeEventListener("pointerdown", closeContextMenu)
-  }, [contextMenu])
 
   const eventToCell = useCallback(
     (event: MouseEvent<HTMLDivElement> | PointerEvent<HTMLDivElement>): CellPosition => {
@@ -95,18 +82,13 @@ export function useCanvasInteractions({
   )
 
   const handleContextMenu = (event: MouseEvent<HTMLDivElement>) => {
-    event.preventDefault()
     event.currentTarget.focus()
-    setContextMenu({ x: event.clientX, y: event.clientY })
   }
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) {
-      setContextMenu(null)
       return
     }
-
-    setContextMenu(null)
 
     if (isLinkTarget(event.target)) {
       return
@@ -202,13 +184,11 @@ export function useCanvasInteractions({
     if (canCopyRawContent && navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(rawContent)
     }
-
-    setContextMenu(null)
   }
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Escape") {
-      setContextMenu(null)
+      event.currentTarget.blur()
     }
   }
 
@@ -223,7 +203,6 @@ export function useCanvasInteractions({
 
   return {
     canCopyRawContent,
-    contextMenu,
     handleContextMenu,
     handleCopy,
     handleCopyRawContent,

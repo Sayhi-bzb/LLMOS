@@ -102,15 +102,11 @@ interface ThreadButtonProps {
 
 function ThreadButton({ thread, active, onClick }: ThreadButtonProps) {
   return (
-    <button
+    <Button
       type="button"
       data-active={active}
-      className={cn(
-        "group min-w-36 rounded-md px-2 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40",
-        active
-          ? "bg-foreground text-background"
-          : "text-muted-foreground hover:bg-muted/60"
-      )}
+      variant={active ? "default" : "ghost"}
+      className="h-auto min-w-36 flex-col items-start gap-0 px-2 py-1.5 text-left"
       onClick={onClick}
     >
       <span className="block truncate text-xs font-medium leading-5">
@@ -119,11 +115,11 @@ function ThreadButton({ thread, active, onClick }: ThreadButtonProps) {
       <span
         className={cn(
           "block text-[0.6875rem] leading-4",
-          active ? "text-background/70" : "text-muted-foreground/60"
+          active ? "text-primary-foreground/70" : "text-muted-foreground/60"
         )}
       >
         {thread.frameCount} turns
       </span>
-    </button>
+    </Button>
   )
 }

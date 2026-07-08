@@ -3,6 +3,12 @@ import { useMemo } from "react"
 
 import { Button } from "@/components/ui/button"
 import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -16,6 +22,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { LlmTurnFrame } from "@/components/llm/types"
 import { parseCanvasContent } from "@/lib/canvas-content"
 import { canvasLinesToCells } from "@/lib/canvas-text"
@@ -98,44 +105,102 @@ export function LlmDebugPanel({ frame, isStreaming }: LlmDebugPanelProps) {
         </Tooltip>
       </TooltipProvider>
 
-      <DialogContent className="max-h-[calc(100vh-4rem)] overflow-auto border-amber-300 bg-amber-50 text-xs text-amber-950 sm:max-w-3xl">
+      <DialogContent className="max-h-[calc(100vh-4rem)] overflow-hidden border-border bg-background text-foreground sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Debug output pipeline</DialogTitle>
-          <DialogDescription className="text-amber-800">
+          <DialogDescription>
             {frame.status} · frame {diagnostics.frameContent.length.toLocaleString()} chars
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-3 md:grid-cols-2">
-          <DebugBlock label="rawFinalContent" value={diagnostics.rawFinalContent} />
-          <DebugBlock label="frameContent" value={diagnostics.frameContent} />
-          <DebugBlock label="markdownStable" value={diagnostics.markdownStable} />
-          <DebugBlock label="markdownPending" value={diagnostics.markdownPending} />
-          <DebugBlock label="canvasText" value={diagnostics.canvasText} />
-          <div className="rounded-none border border-amber-200 bg-white/70 p-2 font-mono">
-            <div>status: {frame.status}</div>
-            <div>streaming: {String(isStreaming)}</div>
-            <div>raw length: {diagnostics.rawFinalContent.length}</div>
-            <div>frame length: {diagnostics.frameContent.length}</div>
-            <div>stable length: {diagnostics.markdownStable.length}</div>
-            <div>pending length: {diagnostics.markdownPending.length}</div>
-            <div>canvas length: {diagnostics.canvasText.length}</div>
-            <div>lastCompletionLength: {frame.debug?.lastCompletionLength ?? "n/a"}</div>
-            <div>finalCompletionLength: {frame.debug?.finalCompletionLength ?? "n/a"}</div>
-          </div>
-        </div>
+        <Tabs defaultValue="overview" className="min-h-0">
+          <TabsList className="max-w-full overflow-x-auto" variant="line">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="raw">Raw</TabsTrigger>
+            <TabsTrigger value="frame">Frame</TabsTrigger>
+            <TabsTrigger value="markdown">Markdown</TabsTrigger>
+            <TabsTrigger value="canvas">Canvas</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview">
+            <DebugOverview frame={frame} isStreaming={isStreaming} diagnostics={diagnostics} />
+          </TabsContent>
+          <TabsContent value="raw">
+            <DebugBlock label="rawFinalContent" value={diagnostics.rawFinalContent} />
+          </TabsContent>
+          <TabsContent value="frame">
+            <DebugBlock label="frameContent" value={diagnostics.frameContent} />
+          </TabsContent>
+          <TabsContent value="markdown">
+            <div className="grid gap-3 md:grid-cols-2">
+              <DebugBlock label="markdownStable" value={diagnostics.markdownStable} />
+              <DebugBlock label="markdownPending" value={diagnostics.markdownPending} />
+            </div>
+          </TabsContent>
+          <TabsContent value="canvas">
+            <DebugBlock label="canvasText" value={diagnostics.canvasText} />
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   )
 }
 
+function DebugOverview({
+  frame,
+  isStreaming,
+  diagnostics,
+}: {
+  frame: LlmTurnFrame
+  isStreaming: boolean
+  diagnostics: {
+    rawFinalContent: string
+    frameContent: string
+    markdownStable: string
+    markdownPending: string
+    canvasText: string
+  }
+}) {
+  return (
+    <Card size="sm">
+      <CardContent className="grid max-h-[60vh] gap-2 overflow-auto font-mono">
+        <DebugMetric label="status" value={frame.status} />
+        <DebugMetric label="streaming" value={String(isStreaming)} />
+        <DebugMetric label="raw length" value={diagnostics.rawFinalContent.length} />
+        <DebugMetric label="frame length" value={diagnostics.frameContent.length} />
+        <DebugMetric label="stable length" value={diagnostics.markdownStable.length} />
+        <DebugMetric label="pending length" value={diagnostics.markdownPending.length} />
+        <DebugMetric label="canvas length" value={diagnostics.canvasText.length} />
+        <DebugMetric label="lastCompletionLength" value={frame.debug?.lastCompletionLength ?? "n/a"} />
+        <DebugMetric
+          label="finalCompletionLength"
+          value={frame.debug?.finalCompletionLength ?? "n/a"}
+        />
+      </CardContent>
+    </Card>
+  )
+}
+
+function DebugMetric({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="grid grid-cols-[minmax(0,12rem)_minmax(0,1fr)] gap-3">
+      <span className="text-muted-foreground">{label}</span>
+      <span>{value}</span>
+    </div>
+  )
+}
+
 function DebugBlock({ label, value }: { label: string; value: string }) {
   return (
-    <section className="rounded-none border border-amber-200 bg-white/70 p-2">
-      <div className="mb-1 font-medium">{label}</div>
-      <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-5">
-        {preview(value)}
-      </pre>
-    </section>
+    <Card size="sm">
+      <CardHeader>
+        <CardTitle>{label}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-5 text-muted-foreground">
+          {preview(value)}
+        </pre>
+      </CardContent>
+    </Card>
   )
 }

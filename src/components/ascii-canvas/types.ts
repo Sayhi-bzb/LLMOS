@@ -51,8 +51,3 @@ export interface RowSelectionRange {
   fromCol: number
   toCol: number
 }
-
-export interface ContextMenuState {
-  x: number
-  y: number
-}

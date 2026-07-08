@@ -11,6 +11,10 @@ import { getSelectionRanges } from "@/components/ascii-canvas/selection"
 import type { AsciiCanvasProps } from "@/components/ascii-canvas/types"
 import { useCanvasInteractions } from "@/components/ascii-canvas/use-canvas-interactions"
 import { useCanvasMetrics } from "@/components/ascii-canvas/use-canvas-metrics"
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
 
 const bottomThreshold = 24
 const horizontalOverflowBuffer = 2
@@ -70,7 +74,6 @@ export function AsciiCanvas({
     : { tabSize: 2 }
   const {
     canCopyRawContent,
-    contextMenu,
     handleContextMenu,
     handleCopy,
     handleCopyRawContent,
@@ -131,49 +134,49 @@ export function AsciiCanvas({
   }, [])
 
   return (
-    <div
-      className={cn(
-        "relative overflow-auto bg-white p-4 text-[13px] leading-[1.45] text-slate-950 outline-none select-none",
-        className,
-      )}
-      onContextMenu={handleContextMenu}
-      onCopy={handleCopy}
-      onDoubleClick={handleDoubleClick}
-      onKeyDown={handleKeyDown}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onScroll={updateStickToBottom}
-      ref={viewportRef}
-      role="application"
-      style={canvasStyle}
-      tabIndex={0}
-    >
-      <span
-        aria-hidden="true"
-        className="pointer-events-none invisible fixed left-0 top-0 font-mono text-[13px] leading-[1.45] whitespace-pre"
-        ref={measureRef}
-      >
-        0000000000
-      </span>
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          className={cn(
+            "relative overflow-auto bg-white p-4 text-[13px] leading-[1.45] text-slate-950 outline-none select-none",
+            className,
+          )}
+          onContextMenu={handleContextMenu}
+          onCopy={handleCopy}
+          onDoubleClick={handleDoubleClick}
+          onKeyDown={handleKeyDown}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onScroll={updateStickToBottom}
+          ref={viewportRef}
+          role="application"
+          style={canvasStyle}
+          tabIndex={0}
+        >
+          <span
+            aria-hidden="true"
+            className="pointer-events-none invisible fixed left-0 top-0 font-mono text-[13px] leading-[1.45] whitespace-pre"
+            ref={measureRef}
+          >
+            0000000000
+          </span>
 
-      <AsciiGrid
-        grid={grid}
-        gridCols={gridCols}
-        metrics={metrics}
-        rows={rows}
-        selectionRanges={selectionRanges}
-        onLinkClick={handleLinkClick}
+          <AsciiGrid
+            grid={grid}
+            gridCols={gridCols}
+            metrics={metrics}
+            rows={rows}
+            selectionRanges={selectionRanges}
+            onLinkClick={handleLinkClick}
+          />
+        </div>
+      </ContextMenuTrigger>
+      <AsciiContextMenu
+        copyRawContentDisabled={!canCopyRawContent}
+        onCopyRawContent={handleCopyRawContent}
       />
-
-      {contextMenu ? (
-        <AsciiContextMenu
-          contextMenu={contextMenu}
-          copyRawContentDisabled={!canCopyRawContent}
-          onCopyRawContent={handleCopyRawContent}
-        />
-      ) : null}
-    </div>
+    </ContextMenu>
   )
 }
 

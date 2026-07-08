@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -74,17 +74,19 @@ export function SystemPromptFloatingPanel({
         </DialogHeader>
 
         <ScrollArea className="min-h-0 max-h-[60vh] pr-3">
-          <div className="grid gap-1.5">
-            <Label htmlFor="system-prompt">Prompt</Label>
-            <Textarea
-              id="system-prompt"
-              className="min-h-48 max-h-[50vh] resize-y text-sm leading-6"
-              disabled={isLoading}
-              onChange={(event) => onSystemPromptChange(event.target.value)}
-              placeholder="Optional behavior or output format instructions"
-              value={systemPromptDraft}
-            />
-          </div>
+          <FieldGroup className="gap-3">
+            <Field>
+              <FieldLabel htmlFor="system-prompt">Prompt</FieldLabel>
+              <Textarea
+                id="system-prompt"
+                className="min-h-48 max-h-[50vh] resize-y text-sm leading-6"
+                disabled={isLoading}
+                onChange={(event) => onSystemPromptChange(event.target.value)}
+                placeholder="Optional behavior or output format instructions"
+                value={systemPromptDraft}
+              />
+            </Field>
+          </FieldGroup>
         </ScrollArea>
 
         <DialogFooter className="items-center justify-between sm:justify-between">

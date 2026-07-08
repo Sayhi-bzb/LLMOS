@@ -10,8 +10,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
   Tooltip,
   TooltipContent,
@@ -73,29 +78,29 @@ export function LlmConfigPanel({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-3">
-          <div className="grid gap-1.5">
-            <Label htmlFor="llm-base-url">URL</Label>
+        <FieldGroup className="gap-3">
+          <Field>
+            <FieldLabel htmlFor="llm-base-url">URL</FieldLabel>
             <Input
               id="llm-base-url"
               onChange={(event) => onConfigChange("baseURL", event.target.value)}
               placeholder={defaultBaseURL}
               value={configDraft.baseURL}
             />
-          </div>
+          </Field>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="llm-model">Model</Label>
+          <Field>
+            <FieldLabel htmlFor="llm-model">Model</FieldLabel>
             <Input
               id="llm-model"
               onChange={(event) => onConfigChange("model", event.target.value)}
               placeholder="gpt-4o-mini"
               value={configDraft.model}
             />
-          </div>
+          </Field>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="llm-api-key">Key</Label>
+          <Field>
+            <FieldLabel htmlFor="llm-api-key">Key</FieldLabel>
             <Input
               id="llm-api-key"
               onChange={(event) => onConfigChange("apiKey", event.target.value)}
@@ -103,10 +108,10 @@ export function LlmConfigPanel({
               type="password"
               value={configDraft.apiKey}
             />
-          </div>
+          </Field>
 
-          {configError ? <p className="text-sm text-destructive">{configError}</p> : null}
-        </div>
+          <FieldError>{configError}</FieldError>
+        </FieldGroup>
 
         <DialogFooter>
           <Button
