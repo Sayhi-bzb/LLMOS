@@ -21,7 +21,14 @@ export interface CanvasRun {
   sourceText?: string
 }
 
-export type CanvasLine = CanvasRun[]
+export type CanvasLine = CanvasRun[] & {
+  fillStyle?: CanvasStyle
+}
+
+export interface CanvasFrame {
+  lines: CanvasLine[]
+  fillStyle?: CanvasStyle
+}
 
 export interface CanvasCell {
   char: string
@@ -31,9 +38,24 @@ export interface CanvasCell {
   sourceText?: string
 }
 
-const emptyCanvasStyle = (): CanvasStyle => ({ decorations: [] })
-
 const cloneCanvasStyle = (style: CanvasStyle): CanvasStyle => ({
+  ...(style.foreground ? { foreground: style.foreground } : {}),
+  ...(style.background ? { background: style.background } : {}),
+  ...(style.label ? { label: style.label } : {}),
+  decorations: [...style.decorations],
+})
+
+const cloneFillStyle = (style: CanvasStyle | undefined): CanvasStyle => ({
+  ...(style?.foreground ? { foreground: style.foreground } : {}),
+  ...(style?.background ? { background: style.background } : {}),
+  decorations: [...(style?.decorations ?? [])],
+})
+
+const mergeCanvasStyle = (
+  baseStyle: CanvasStyle | undefined,
+  style: CanvasStyle,
+): CanvasStyle => ({
+  ...cloneFillStyle(baseStyle),
   ...(style.foreground ? { foreground: style.foreground } : {}),
   ...(style.background ? { background: style.background } : {}),
   ...(style.label ? { label: style.label } : {}),
@@ -76,29 +98,35 @@ export const getTextDisplayWidth = (text: string) =>
   Array.from(text).reduce((width, char) => width + getCellWidth(char), 0)
 
 export const canvasLinesToCells = (
-  lines: CanvasLine[],
+  input: CanvasLine[] | CanvasFrame,
   cols: number,
-  minRows = lines.length,
+  minRows?: number,
 ): CanvasCell[][] => {
+  const lines = Array.isArray(input) ? input : input.lines
+  const frameFillStyle = Array.isArray(input) ? undefined : input.fillStyle
+  const minimumRows = minRows ?? lines.length
   const safeCols = Math.max(1, cols)
-  const createEmptyRow = (): CanvasCell[] =>
+  const createEmptyRow = (fillStyle?: CanvasStyle): CanvasCell[] =>
     Array.from({ length: safeCols }, () => ({
       char: " ",
-      style: emptyCanvasStyle(),
+      style: cloneFillStyle(fillStyle ?? frameFillStyle),
     }))
   const rows: CanvasCell[][] = []
 
-  const appendRow = () => {
-    const nextRow = createEmptyRow()
+  const appendRow = (fillStyle?: CanvasStyle) => {
+    const nextRow = createEmptyRow(fillStyle)
     rows.push(nextRow)
     return nextRow
   }
 
   for (const line of lines) {
-    let cells = appendRow()
+    const lineFillStyle = line.fillStyle ?? frameFillStyle
+    let cells = appendRow(lineFillStyle)
     let colIndex = 0
 
     for (const run of line) {
+      const runStyle = mergeCanvasStyle(lineFillStyle, run.style)
+
       for (const char of Array.from(run.text)) {
         const cellWidth = Math.min(getCellWidth(char), safeCols)
 
@@ -113,13 +141,13 @@ export const canvasLinesToCells = (
         }
 
         if (colIndex > 0 && colIndex + cellWidth > safeCols) {
-          cells = appendRow()
+          cells = appendRow(lineFillStyle)
           colIndex = 0
         }
 
         cells[colIndex] = {
           char,
-          style: cloneCanvasStyle(run.style),
+          style: cloneCanvasStyle(runStyle),
           width: cellWidth,
           sourceText: run.sourceText ? char : undefined,
         }
@@ -127,7 +155,7 @@ export const canvasLinesToCells = (
         for (let offset = 1; offset < cellWidth; offset += 1) {
           cells[colIndex + offset] = {
             char: "",
-            style: cloneCanvasStyle(run.style),
+            style: cloneCanvasStyle(runStyle),
             continuation: true,
           }
         }
@@ -135,7 +163,7 @@ export const canvasLinesToCells = (
         colIndex += cellWidth
 
         if (colIndex >= safeCols) {
-          cells = appendRow()
+          cells = appendRow(lineFillStyle)
           colIndex = 0
         }
       }
@@ -146,8 +174,8 @@ export const canvasLinesToCells = (
     }
   }
 
-  while (rows.length < Math.max(minRows, 1)) {
-    rows.push(createEmptyRow())
+  while (rows.length < Math.max(minimumRows, 1)) {
+    rows.push(createEmptyRow(frameFillStyle))
   }
 
   return rows

@@ -1,4 +1,5 @@
 import Anser from "anser"
+import { resolveAnsiColor } from "@/lib/ansi-theme"
 import { type CanvasLine, type CanvasRun, type CanvasStyle, type CanvasTextDecoration } from "@/lib/canvas-text"
 
 type AnsiTextDecoration =
@@ -334,17 +335,9 @@ const splitOsc8Segments = (content: string): OscSegment[] => {
 }
 
 
-const toRgb = (value: string | null | undefined) => {
-  if (!value) {
-    return undefined
-  }
-
-  return `rgb(${value})`
-}
-
 const toStyle = (entry: Anser.AnserJsonEntry, label?: string): AnsiStyle => {
-  const foreground = toRgb(entry.fg_truecolor || entry.fg)
-  const background = toRgb(entry.bg_truecolor || entry.bg)
+  const foreground = resolveAnsiColor(entry.fg, entry.fg_truecolor)
+  const background = resolveAnsiColor(entry.bg, entry.bg_truecolor)
   const decorations = [...new Set(entry.decorations ?? [])] as AnsiTextDecoration[]
 
   return {
@@ -440,7 +433,10 @@ export const parseAnsiToLines = (content: string): AnsiLine[] => {
   const lines: AnsiLine[] = [[]]
 
   for (const segment of splitOsc8Segments(content)) {
-    const entries = Anser.ansiToJson(segment.text, { remove_empty: true })
+    const entries = Anser.ansiToJson(segment.text, {
+      remove_empty: true,
+      use_classes: true,
+    })
 
     for (const entry of entries) {
       if (!entry.content) {

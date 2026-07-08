@@ -29,11 +29,18 @@ export interface ScreenRun {
   style: ScreenStyle
 }
 
-export type ScreenLine = ScreenRun[]
+export type ScreenLine = ScreenRun[] & {
+  fillStyle?: ScreenStyle
+}
+
+export interface ScreenFrame {
+  lines: ScreenLine[]
+  fillStyle?: ScreenStyle
+}
 
 export interface ScreenProtocol {
   id: ScreenProtocolId
   detect: (content: string) => boolean
   stabilize: (content: string, options?: ScreenParseOptions) => StableScreenContent
-  parse: (content: string, options?: ScreenParseOptions) => ScreenLine[]
+  parse: (content: string, options?: ScreenParseOptions) => ScreenFrame
 }

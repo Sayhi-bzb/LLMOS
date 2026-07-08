@@ -1,12 +1,15 @@
+import Anser from "anser"
 import { parseAnsiToLines } from "@/lib/ansi"
+import { resolveAnsiColor } from "@/lib/ansi-theme"
 import type { CanvasLine, CanvasTextDecoration } from "@/lib/canvas-text"
-import type { ScreenLine, ScreenProtocol, ScreenStyle } from "@/lib/screen-protocol/types"
+import type { ScreenFrame, ScreenLine, ScreenProtocol, ScreenStyle } from "@/lib/screen-protocol/types"
 
 const ansiProtocolPattern = /(?:\x1b\[|\x1b\]8;|\]8;|\[(?:\d{1,3};)+\d{0,3}m?)/
 const tailSearchLimit = 512
 const bareOsc8Prefix = "]8;"
 const standardOsc8Prefix = "\x1b]8;"
 const standardCsiPrefix = "\x1b["
+const standardSgrPrefix = "\x1b["
 
 const splitAt = (content: string, index: number) => ({
   stable: content.slice(0, index),
@@ -127,13 +130,58 @@ const canvasLinesToScreenLines = (lines: CanvasLine[]): ScreenLine[] =>
     })),
   )
 
+const parseLeadingSgrToken = (content: string) => {
+  if (content.startsWith(standardSgrPrefix)) {
+    const endIndex = content.indexOf("m", standardSgrPrefix.length)
+
+    return endIndex === -1 ? undefined : content.slice(0, endIndex + 1)
+  }
+
+  if (!content.startsWith("[")) {
+    return undefined
+  }
+
+  const endIndex = content.indexOf("m", 1)
+
+  if (endIndex === -1) {
+    return undefined
+  }
+
+  const body = content.slice(1, endIndex)
+
+  return /^[\d;]+$/.test(body) ? `\x1b[${body}m` : undefined
+}
+
+const getFrameFillStyle = (content: string): ScreenStyle | undefined => {
+  const token = parseLeadingSgrToken(content)
+
+  if (!token) {
+    return undefined
+  }
+
+  const [entry] = Anser.ansiToJson(`${token}x`, {
+    remove_empty: true,
+    use_classes: true,
+  })
+  const foreground = resolveAnsiColor(entry?.fg, entry?.fg_truecolor)
+  const background = resolveAnsiColor(entry?.bg, entry?.bg_truecolor)
+
+  return foreground || background ? {
+    ...(foreground ? { foreground } : {}),
+    ...(background ? { background } : {}),
+  } : undefined
+}
+
 export const ansiProtocol: ScreenProtocol = {
   id: "ansi",
   detect: (content) => ansiProtocolPattern.test(content),
   stabilize: (content, options) => stabilizeAnsiStream(content, options?.streaming),
-  parse: (content, options) => {
+  parse: (content, options): ScreenFrame => {
     const stabilized = stabilizeAnsiStream(content, options?.streaming)
 
-    return canvasLinesToScreenLines(parseAnsiToLines(stabilized.stable))
+    return {
+      lines: canvasLinesToScreenLines(parseAnsiToLines(stabilized.stable)),
+      fillStyle: getFrameFillStyle(stabilized.stable),
+    }
   },
 }

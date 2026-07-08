@@ -83,8 +83,8 @@ export function LlmDebugPanel({
     const rawFinalContent = frame?.rawFinalContent ?? ""
     const protocol = getScreenProtocol()
     const stabilized = protocol.stabilize(frameContent, { streaming: isStreaming })
-    const canvasLines = parseCanvasContent(frameContent, { streaming: isStreaming })
-    const canvasCells = canvasLinesToCells(canvasLines, debugCols, 1)
+    const canvasFrame = parseCanvasContent(frameContent, { streaming: isStreaming })
+    const canvasCells = canvasLinesToCells(canvasFrame, debugCols, 1)
     const canvasText = cellsToText(canvasCells)
 
     return {

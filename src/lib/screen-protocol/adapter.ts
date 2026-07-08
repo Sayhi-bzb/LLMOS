@@ -1,5 +1,5 @@
-import type { CanvasLine, CanvasStyle, CanvasTextDecoration } from "@/lib/canvas-text"
-import type { ScreenLine, ScreenStyle } from "@/lib/screen-protocol/types"
+import type { CanvasFrame, CanvasLine, CanvasStyle, CanvasTextDecoration } from "@/lib/canvas-text"
+import type { ScreenFrame, ScreenLine, ScreenStyle } from "@/lib/screen-protocol/types"
 
 const hexColorPattern = /^#(?:[\da-f]{3}|[\da-f]{6})$/i
 
@@ -38,10 +38,21 @@ const screenStyleToCanvasStyle = (style: ScreenStyle): CanvasStyle => {
 }
 
 export const screenLinesToCanvasLines = (lines: ScreenLine[]): CanvasLine[] =>
-  lines.map((line) =>
-    line.map((run) => ({
+  lines.map((line) => {
+    const canvasLine: CanvasLine = line.map((run) => ({
       text: run.text,
       style: screenStyleToCanvasStyle(run.style),
       sourceText: run.text,
-    })),
-  )
+    }))
+
+    if (line.fillStyle) {
+      canvasLine.fillStyle = screenStyleToCanvasStyle(line.fillStyle)
+    }
+
+    return canvasLine
+  })
+
+export const screenFrameToCanvasFrame = (frame: ScreenFrame): CanvasFrame => ({
+  lines: screenLinesToCanvasLines(frame.lines),
+  ...(frame.fillStyle ? { fillStyle: screenStyleToCanvasStyle(frame.fillStyle) } : {}),
+})

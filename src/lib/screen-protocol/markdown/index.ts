@@ -8,6 +8,7 @@ export const markdownProtocol: ScreenProtocol = {
   id: "markdown",
   detect: (content) => markdownProtocolPattern.test(content),
   stabilize: stabilizeMarkdownStream,
-  parse: (content, options) =>
-    parseMarkdownToScreenLines(stabilizeMarkdownStream(content, options).stable),
+  parse: (content, options) => ({
+    lines: parseMarkdownToScreenLines(stabilizeMarkdownStream(content, options).stable),
+  }),
 }

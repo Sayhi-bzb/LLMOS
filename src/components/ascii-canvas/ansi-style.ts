@@ -42,6 +42,10 @@ export function getCanvasStyle(style: CanvasStyle): CSSProperties {
   const backgroundColor = isReverse ? style.foreground : style.background
 
   return {
+    display: "inline-block",
+    height: "100%",
+    lineHeight: "inherit",
+    verticalAlign: "top",
     ...(color ? { color } : {}),
     ...(backgroundColor ? { backgroundColor } : {}),
     fontWeight: decorations.has("bold") ? 700 : undefined,

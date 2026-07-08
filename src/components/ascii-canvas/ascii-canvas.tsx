@@ -56,10 +56,14 @@ export function AsciiCanvas({
   const gridMinRows = Math.max(minRows, viewportMinRows)
 
   const grid = useMemo(() => {
-    const lines = parseCanvasContent(content, { streaming: isStreaming })
-    const repairedLines = repairBoxDrawingLines(lines, gridCols)
+    const frame = parseCanvasContent(content, { streaming: isStreaming })
+    const repairedLines = repairBoxDrawingLines(frame.lines, gridCols)
 
-    return canvasLinesToCells(repairedLines, gridCols, gridMinRows)
+    return canvasLinesToCells(
+      { ...frame, lines: repairedLines },
+      gridCols,
+      gridMinRows,
+    )
   }, [content, gridCols, gridMinRows, isStreaming])
 
   const rows = grid.length
