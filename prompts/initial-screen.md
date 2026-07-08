@@ -1,13 +1,13 @@
-                                                <span fg-danger>██╗     ██╗     ███╗   ███╗ ██████╗ ███████╗</span>
-                                                <span fg-danger>██║     ██║     ████╗ ████║██╔═══██╗██╔════╝</span>
-                                                <span fg-danger>██║     ██║     ██╔████╔██║██║   ██║███████╗</span>
-                                                <span fg-danger>██║     ██║     ██║╚██╔╝██║██║   ██║╚════██║</span>
-                                                <span fg-danger>███████╗███████╗██║ ╚═╝ ██║╚██████╔╝███████║</span>
-                                                <span fg-danger>╚══════╝╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚══════╝</span>
+                                                [31m██╗     ██╗     ███╗   ███╗ ██████╗ ███████╗[0m
+                                                [31m██║     ██║     ████╗ ████║██╔═══██╗██╔════╝[0m
+                                                [31m██║     ██║     ██╔████╔██║██║   ██║███████╗[0m
+                                                [31m██║     ██║     ██║╚██╔╝██║██║   ██║╚════██║[0m
+                                                [31m███████╗███████╗██║ ╚═╝ ██║╚██████╔╝███████║[0m
+                                                [31m╚══════╝╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚══════╝[0m
 
-                                                <span fg-muted>Please select your preferred language:</span>
-                                                <span fg-muted>请选择您的系统语言：</span>
+                                                [90mPlease select your preferred language:[0m
+                                                [90m请选择您的系统语言：[0m
 
-                                                [English](prompt://Use English as the system language)                        [中文](prompt://使用中文作为系统语言)
+                                                ]8;;prompt://Use English as the system language\[4;34mEnglish[0m]8;;\                        ]8;;prompt://使用中文作为系统语言\[4;34m中文[0m]8;;\
 
-                                                <span fg-muted>[</span><span fg-success>============================></span><span fg-muted>-----------] 75%</span>
+                                                [90m[[0m[32m============================>[0m[90m-----------] 75%[0m

@@ -1,66 +1,15 @@
-import { parseAnsiToLines } from "@/lib/ansi"
-import type { CanvasLine, CanvasStyle } from "@/lib/canvas-text"
-import { stabilizeMarkdownStream } from "@/lib/markdown-stream"
-import { parseMarkdownToRichLines, type RichTextLine, type RichTextStyle } from "@/lib/rich-markup"
+import type { CanvasLine } from "@/lib/canvas-text"
+import { screenLinesToCanvasLines } from "@/lib/screen-protocol/adapter"
+import { getScreenProtocol } from "@/lib/screen-protocol/registry"
+import type { ScreenParseOptions } from "@/lib/screen-protocol/types"
 
-export interface CanvasContentParseOptions {
-  streaming?: boolean
-}
-
-const markdownProtocolPattern = /(?:\*\*|~~|<\/?(?:span|u)\b|\[[^\]]+\]\([^)]*\))/i
-const ansiProtocolPattern = /(?:\x1b\[|\x1b\]8;|\]8;|\[(?:\d{1,3};)+\d{0,3}m?)/
-
-const hexColorPattern = /^#(?:[\da-f]{3}|[\da-f]{6})$/i
-
-const toCanvasColor = (value: string) => hexColorPattern.test(value) ? hexToRgb(value) : value
-
-const hexToRgb = (value: string) => {
-  const hex = value.slice(1)
-  const expanded = hex.length === 3
-    ? hex.split("").map((char) => `${char}${char}`).join("")
-    : hex
-  const red = Number.parseInt(expanded.slice(0, 2), 16)
-  const green = Number.parseInt(expanded.slice(2, 4), 16)
-  const blue = Number.parseInt(expanded.slice(4, 6), 16)
-
-  return `rgb(${red}, ${green}, ${blue})`
-}
-
-const richStyleToCanvasStyle = (style: RichTextStyle): CanvasStyle => ({
-  ...(style.color ? { foreground: toCanvasColor(style.color) } : {}),
-  ...(style.background ? { background: toCanvasColor(style.background) } : {}),
-  ...(style.href ? { label: style.href } : {}),
-  decorations: [
-    ...(style.bold ? ["bold" as const] : []),
-    ...(style.italic ? ["italic" as const] : []),
-    ...(style.underline ? ["underline" as const] : []),
-    ...(style.strike ? ["strikethrough" as const] : []),
-  ],
-})
-
-const richTextLinesToCanvasLines = (lines: RichTextLine[]): CanvasLine[] =>
-  lines.map((line) =>
-    line.map((run) => ({
-      text: run.text,
-      style: richStyleToCanvasStyle(run.style),
-      sourceText: run.text,
-    })),
-  )
-
-const parseMarkdownToCanvasLines = (content: string): CanvasLine[] =>
-  richTextLinesToCanvasLines(parseMarkdownToRichLines(content))
-
-const parseAnsiToCanvasLines = (content: string): CanvasLine[] => parseAnsiToLines(content)
+export type CanvasContentParseOptions = ScreenParseOptions
 
 export const parseCanvasContent = (
   content: string,
   options: CanvasContentParseOptions = {},
 ): CanvasLine[] => {
-  if (markdownProtocolPattern.test(content) || !ansiProtocolPattern.test(content)) {
-    return parseMarkdownToCanvasLines(stabilizeMarkdownStream(content, options).stable)
-  }
+  const protocol = getScreenProtocol(options.protocol)
 
-  return parseAnsiToCanvasLines(content)
+  return screenLinesToCanvasLines(protocol.parse(content, options))
 }
-
-

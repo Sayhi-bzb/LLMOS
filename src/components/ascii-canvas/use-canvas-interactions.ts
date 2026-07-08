@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState, type ClipboardEvent, type KeyboardEvent, type MouseEvent, type PointerEvent, type RefObject } from "react"
 
 import type { CanvasCell } from "@/lib/canvas-text"
-import { parseCanvasHref } from "@/lib/canvas-href"
+import { parseCanvasHref } from "@/lib/screen-protocol/href"
 
 import { getSelectedText } from "@/components/ascii-canvas/selection"
 import type {

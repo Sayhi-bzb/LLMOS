@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react"
 
 import type { CanvasCell, CanvasStyle } from "@/lib/canvas-text"
-import { isCanvasLinkHref } from "@/lib/canvas-href"
+import { isCanvasLinkHref } from "@/lib/screen-protocol/href"
 
 import type { CellRun, OscFieldKind } from "@/components/ascii-canvas/types"
 

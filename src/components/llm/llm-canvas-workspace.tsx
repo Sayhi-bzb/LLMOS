@@ -163,7 +163,18 @@ export function LlmCanvasWorkspace({
                   onSystemPromptChange={onSystemPromptChange}
                   onSaveSystemPrompt={onSaveSystemPrompt}
                 />
-                <LlmDebugPanel frame={selectedFrame} isStreaming={isCanvasStreaming} />
+                <LlmDebugPanel
+                  frame={selectedFrame}
+                  isStreaming={isCanvasStreaming}
+                  activeThreadId={activeThreadId}
+                  selectedFrameId={selectedFrameId}
+                  canvasContent={canvasContent}
+                  frameCount={frames.length}
+                  isLoading={isLoading}
+                  configDraft={configDraft}
+                  configStatus={configStatus}
+                  hasServerApiKey={hasServerApiKey}
+                />
               </>
             }
           />

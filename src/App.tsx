@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, type FormEvent } from "react"
 import { LlmCanvasWorkspace, pendingOutput } from "@/components/llm"
 import type {
   LlmConfigDraft,
+  LlmRequestTrigger,
+  LlmTurnDebug,
   LlmThreadSummary,
   LlmTurnFrame,
   ServerInitialScreen,
@@ -44,7 +46,7 @@ const formatPromptWithSourceScreen = (sourceContent: string, prompt: string) => 
 const formatPendingScreen = (sourceContent: string, actionPrompt: string, tick: number) => [
   sourceContent.trimEnd(),
   "",
-  `<span fg-accent>${pendingSpinnerFrames[tick % pendingSpinnerFrames.length]}</span> <span fg-muted>正在处理：</span>${actionPrompt}`,
+  `[34m${pendingSpinnerFrames[tick % pendingSpinnerFrames.length]}[0m [90m正在处理：[0m${actionPrompt}`,
 ].join("\n")
 
 const getFrameTitle = (prompt: string) => {
@@ -102,6 +104,7 @@ function App() {
   const activeFrameIdRef = useRef<string | null>(null)
   const activeRequestThreadIdRef = useRef<string | null>(null)
   const framesByThreadRef = useRef(new Map<string, LlmTurnFrame[]>())
+  const streamLengthByFrameRef = useRef(new Map<string, number>())
   const wasLoadingRef = useRef(false)
   const deltaPersistRef = useRef({
     frameId: null as string | null,
@@ -122,12 +125,132 @@ function App() {
     )
   }
 
+  const updateFrameDebug = (
+    threadId: string,
+    frameId: string,
+    getNextDebug: (currentDebug: LlmTurnDebug | undefined) => LlmTurnDebug,
+  ) => {
+    const updateFrames = (currentFrames: LlmTurnFrame[]) =>
+      currentFrames.map((frame) =>
+        frame.id === frameId ? { ...frame, debug: getNextDebug(frame.debug) } : frame,
+      )
+
+    const cachedFrames = framesByThreadRef.current.get(threadId) ?? []
+    const nextFrames = updateFrames(cachedFrames)
+
+    framesByThreadRef.current.set(threadId, nextFrames)
+
+    if (activeThreadId === threadId) {
+      setFrames(nextFrames)
+    }
+  }
+
+  const getEventFrameId = (event: SessionEvent) => {
+    if (event.type === "session_reset") {
+      return null
+    }
+
+    return event.type === "frame_started" ? event.frame.id : event.frameId
+  }
+
+  const getEventPersistedLength = (event: SessionEvent) => {
+    if (event.type === "frame_started") {
+      return event.frame.content.length
+    }
+
+    if (event.type === "frame_delta" || event.type === "frame_finished") {
+      return event.content.length
+    }
+
+    return undefined
+  }
+
+  const createRequestDebug = ({
+    requestId,
+    threadId,
+    frameId,
+    trigger,
+    prompt,
+    actionPrompt,
+    sourceContent,
+  }: {
+    requestId: string
+    threadId: string
+    frameId: string
+    trigger: LlmRequestTrigger
+    prompt: string
+    actionPrompt: string
+    sourceContent: string
+  }): LlmTurnDebug => ({
+    request: {
+      requestId,
+      threadId,
+      frameId,
+      trigger,
+      promptLength: prompt.length,
+      actionPromptLength: actionPrompt.length,
+      sourceContentLength: sourceContent.length,
+      systemPromptLength: savedSystemPrompt.trim().length,
+      baseURL: configDraft.baseURL,
+      model: configDraft.model,
+      hasServerApiKey,
+      createdAt: Date.now(),
+    },
+    stream: {
+      startedAt: Date.now(),
+      chunkCount: 0,
+      lastDeltaLength: 0,
+      totalLength: 0,
+    },
+  })
+
   const enqueueThreadEvent = (threadId: string, event: SessionEvent) => {
+    const frameId = getEventFrameId(event)
+    const persistedLength = getEventPersistedLength(event)
+    const markPersisted = () => {
+      if (!frameId) {
+        return
+      }
+
+      updateFrameDebug(threadId, frameId, (currentDebug) => ({
+        ...currentDebug,
+        persistence: {
+          ...currentDebug?.persistence,
+          lastEventType: event.type,
+          lastPersistedLength: persistedLength,
+          pendingLength: deltaPersistRef.current.pendingContent.length,
+          lastPersistedAt: Date.now(),
+          lastPersistError: undefined,
+        },
+      }))
+    }
+    const markPersistError = (persistError: unknown) => {
+      if (!frameId) {
+        return
+      }
+
+      updateFrameDebug(threadId, frameId, (currentDebug) => ({
+        ...currentDebug,
+        persistence: {
+          ...currentDebug?.persistence,
+          lastEventType: event.type,
+          lastPersistedLength: persistedLength,
+          pendingLength: deltaPersistRef.current.pendingContent.length,
+          lastPersistError:
+            persistError instanceof Error ? persistError.message : String(persistError),
+        },
+      }))
+    }
+
     const previous = threadPersistQueueRef.current.get(threadId) ?? Promise.resolve()
     const next = previous
       .catch(() => undefined)
       .then(() => persistThreadEvent(threadId, event))
-      .catch(console.error)
+      .then(markPersisted)
+      .catch((persistError) => {
+        markPersistError(persistError)
+        console.error(persistError)
+      })
 
     threadPersistQueueRef.current.set(threadId, next)
 
@@ -299,6 +422,16 @@ function App() {
                 debug: {
                   ...frame.debug,
                   finalCompletionLength: finalCompletion.length,
+                  stream: {
+                    startedAt: frame.debug?.stream?.startedAt ?? Date.now(),
+                    chunkCount: frame.debug?.stream?.chunkCount ?? 0,
+                    lastDeltaLength: frame.debug?.stream?.lastDeltaLength ?? 0,
+                    totalLength: finalCompletion.length,
+                    firstChunkAt: frame.debug?.stream?.firstChunkAt,
+                    lastChunkAt: frame.debug?.stream?.lastChunkAt,
+                    finishedAt: Date.now(),
+                    outcome: "complete" as const,
+                  },
                 },
                 status: "complete" as const,
               }
@@ -317,6 +450,7 @@ function App() {
 
       activeFrameIdRef.current = null
       activeRequestThreadIdRef.current = null
+      streamLengthByFrameRef.current.delete(activeFrameId)
     },
   })
 
@@ -457,6 +591,12 @@ function App() {
       return
     }
 
+    const previousLength = streamLengthByFrameRef.current.get(activeFrameId) ?? 0
+    const deltaLength = Math.max(completion.length - previousLength, 0)
+    const now = Date.now()
+
+    streamLengthByFrameRef.current.set(activeFrameId, completion.length)
+
     const updateFrames = (currentFrames: LlmTurnFrame[]) =>
       currentFrames.map((frame) =>
         frame.id === activeFrameId
@@ -466,6 +606,19 @@ function App() {
               debug: {
                 ...frame.debug,
                 lastCompletionLength: completion.length,
+                stream: {
+                  startedAt: frame.debug?.stream?.startedAt ?? now,
+                  firstChunkAt:
+                    frame.debug?.stream?.firstChunkAt ?? (completion.length > 0 ? now : undefined),
+                  lastChunkAt: completion.length > 0 ? now : frame.debug?.stream?.lastChunkAt,
+                  finishedAt: frame.debug?.stream?.finishedAt,
+                  chunkCount:
+                    (frame.debug?.stream?.chunkCount ?? 0) + (deltaLength > 0 ? 1 : 0),
+                  lastDeltaLength: deltaLength,
+                  totalLength: completion.length,
+                  outcome: frame.debug?.stream?.outcome,
+                  errorMessage: frame.debug?.stream?.errorMessage,
+                },
               },
             }
           : frame,
@@ -484,7 +637,6 @@ function App() {
       return
     }
 
-    const now = Date.now()
     deltaPersistRef.current.pendingContent = completion
 
     const persistDelta = () => {
@@ -541,7 +693,24 @@ function App() {
       const updateFrames = (currentFrames: LlmTurnFrame[]) =>
         currentFrames.map((frame) =>
           frame.id === activeFrameId && frame.status === "streaming"
-            ? { ...frame, status: "error" as const }
+            ? {
+                ...frame,
+                debug: {
+                  ...frame.debug,
+                  stream: {
+                    startedAt: frame.debug?.stream?.startedAt ?? Date.now(),
+                    firstChunkAt: frame.debug?.stream?.firstChunkAt,
+                    lastChunkAt: frame.debug?.stream?.lastChunkAt,
+                    finishedAt: Date.now(),
+                    chunkCount: frame.debug?.stream?.chunkCount ?? 0,
+                    lastDeltaLength: frame.debug?.stream?.lastDeltaLength ?? 0,
+                    totalLength: frame.content.length,
+                    outcome: "error" as const,
+                    errorMessage: error.message,
+                  },
+                },
+                status: "error" as const,
+              }
             : frame,
         )
 
@@ -564,6 +733,7 @@ function App() {
       })
       activeFrameIdRef.current = null
       activeRequestThreadIdRef.current = null
+      streamLengthByFrameRef.current.delete(activeFrameId)
     }
 
     wasLoadingRef.current = isLoading
@@ -668,7 +838,14 @@ function App() {
     }
   }
 
-  const submitPrompt = async (prompt: string, options?: { sourceContent?: string }) => {
+  const submitPrompt = async (
+    prompt: string,
+    options?: {
+      sourceContent?: string
+      trigger?: LlmRequestTrigger
+      interactionHref?: string
+    },
+  ) => {
     const actionPrompt = prompt.trim()
 
     if (!actionPrompt || isLoading) {
@@ -683,6 +860,8 @@ function App() {
         ? formatPromptWithSourceScreen(options.sourceContent, actionPrompt)
         : actionPrompt
       const frameId = createFrameId()
+      const requestId = createFrameId()
+      const trigger = options?.trigger ?? "input"
       const nextFrame: LlmTurnFrame = {
         id: frameId,
         title: getFrameTitle(actionPrompt),
@@ -690,6 +869,27 @@ function App() {
         content: "",
         sourceContent,
         actionPrompt,
+        debug: {
+          ...createRequestDebug({
+            requestId,
+            threadId,
+            frameId,
+            trigger,
+            prompt: nextPrompt,
+            actionPrompt,
+            sourceContent,
+          }),
+          interaction:
+            trigger === "prompt_href"
+              ? {
+                  href: options?.interactionHref ?? `prompt://${actionPrompt}`,
+                  kind: "prompt",
+                  prompt: actionPrompt,
+                  triggeredRequest: true,
+                  at: Date.now(),
+                }
+              : undefined,
+        },
         createdAt: Date.now(),
         status: "streaming",
       }
@@ -697,6 +897,7 @@ function App() {
 
       activeFrameIdRef.current = frameId
       activeRequestThreadIdRef.current = threadId
+      streamLengthByFrameRef.current.set(frameId, 0)
       deltaPersistRef.current = {
         frameId,
         threadId,
@@ -723,9 +924,17 @@ function App() {
   }
 
   const handlePromptHref = (prompt: string) => {
+    const href = `prompt://${prompt}`
+
     void submitPrompt(
       prompt,
-      isInitialScreenVisible ? { sourceContent: initialScreenContent } : undefined,
+      isInitialScreenVisible
+        ? {
+            sourceContent: initialScreenContent,
+            trigger: "prompt_href",
+            interactionHref: href,
+          }
+        : { trigger: "prompt_href", interactionHref: href },
     )
   }
 
@@ -781,7 +990,25 @@ function App() {
     if (activeFrameId && requestThreadId) {
       const updateFrames = (currentFrames: LlmTurnFrame[]) =>
         currentFrames.map((frame) =>
-          frame.id === activeFrameId ? { ...frame, status: "stopped" as const } : frame,
+          frame.id === activeFrameId
+            ? {
+                ...frame,
+                debug: {
+                  ...frame.debug,
+                  stream: {
+                    startedAt: frame.debug?.stream?.startedAt ?? Date.now(),
+                    firstChunkAt: frame.debug?.stream?.firstChunkAt,
+                    lastChunkAt: frame.debug?.stream?.lastChunkAt,
+                    finishedAt: Date.now(),
+                    chunkCount: frame.debug?.stream?.chunkCount ?? 0,
+                    lastDeltaLength: frame.debug?.stream?.lastDeltaLength ?? 0,
+                    totalLength: frame.content.length,
+                    outcome: "stopped" as const,
+                  },
+                },
+                status: "stopped" as const,
+              }
+            : frame,
         )
 
       const cachedFrames = framesByThreadRef.current.get(requestThreadId) ?? []
@@ -803,6 +1030,7 @@ function App() {
       })
       activeFrameIdRef.current = null
       activeRequestThreadIdRef.current = null
+      streamLengthByFrameRef.current.delete(activeFrameId)
     }
 
     if (deltaPersistRef.current.timeoutId !== null) {

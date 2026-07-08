@@ -1,0 +1,422 @@
+import MarkdownIt from "markdown-it"
+import type Token from "markdown-it/lib/token.mjs"
+import { getTextDisplayWidth } from "@/lib/canvas-text"
+import { isMarkdownAllowedHref, normalizeMarkdownPromptLinks } from "@/lib/screen-protocol/href"
+import { getSemanticColor } from "@/lib/screen-protocol/style-tokens"
+import type { ScreenLine, ScreenStyle } from "@/lib/screen-protocol/types"
+
+export type RichTextLine = ScreenLine
+
+type StyleFrame = Partial<ScreenStyle>
+
+type HtmlInlineToken =
+  | { kind: "open"; frame: StyleFrame }
+  | { kind: "close"; tag: "span" | "u" }
+  | { kind: "text"; text: string }
+
+interface TableCell {
+  runs: RichTextLine
+  header: boolean
+}
+
+type TableRow = TableCell[]
+
+const markdown = new MarkdownIt({
+  html: true,
+  linkify: false,
+  typographer: false,
+})
+const defaultValidateLink = markdown.validateLink.bind(markdown)
+markdown.validateLink = (url: string) => isMarkdownAllowedHref(url, defaultValidateLink)
+
+const tableColumnGap = 3
+const allowedColorPattern = /^#(?:[\da-f]{3}|[\da-f]{6})$/i
+const spanOpenPattern = /^<span\s+([^>]*)>$/i
+const styleAttributePattern = /\bstyle\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/i
+const semanticColorAttributePattern = /\b(fg|bg)-([a-z][-_a-z0-9]*)\b/gi
+
+const emptyStyle = (): ScreenStyle => ({})
+
+const normalizeColor = (value: string) => {
+  const trimmed = value.trim()
+  return allowedColorPattern.test(trimmed) ? trimmed : undefined
+}
+
+const parseSemanticColorAttributes = (attributes: string): StyleFrame => {
+  const frame: StyleFrame = {}
+
+  for (const match of attributes.matchAll(semanticColorAttributePattern)) {
+    const [, channel, token] = match
+    const color = getSemanticColor(channel, token)
+
+    if (!color) {
+      continue
+    }
+
+    if (channel.toLowerCase() === "fg") {
+      frame.foreground = color
+    }
+
+    if (channel.toLowerCase() === "bg") {
+      frame.background = color
+    }
+  }
+
+  return frame
+}
+
+const parseStyleAttribute = (attributes: string): StyleFrame => {
+  const match = attributes.match(styleAttributePattern)
+
+  if (!match) {
+    return {}
+  }
+
+  const styleText = match[2] ?? match[3] ?? match[4] ?? ""
+  const frame: StyleFrame = {}
+
+  for (const declaration of styleText.split(";")) {
+    const separatorIndex = declaration.indexOf(":")
+
+    if (separatorIndex === -1) {
+      continue
+    }
+
+    const property = declaration.slice(0, separatorIndex).trim().toLowerCase()
+    const value = normalizeColor(declaration.slice(separatorIndex + 1))
+
+    if (!value) {
+      continue
+    }
+
+    if (property === "color") {
+      frame.foreground = value
+    }
+
+    if (property === "background" || property === "background-color") {
+      frame.background = value
+    }
+  }
+
+  return frame
+}
+
+const parseHtmlInlineToken = (content: string): HtmlInlineToken => {
+  const trimmed = content.trim()
+
+  if (/^<u\s*>$/i.test(trimmed)) {
+    return { kind: "open", frame: { underline: true } }
+  }
+
+  if (/^<\/u\s*>$/i.test(trimmed)) {
+    return { kind: "close", tag: "u" }
+  }
+
+  const spanOpenMatch = trimmed.match(spanOpenPattern)
+
+  if (spanOpenMatch) {
+    return {
+      kind: "open",
+      frame: {
+        ...parseStyleAttribute(spanOpenMatch[1]),
+        ...parseSemanticColorAttributes(spanOpenMatch[1]),
+      },
+    }
+  }
+
+  if (/^<\/span\s*>$/i.test(trimmed)) {
+    return { kind: "close", tag: "span" }
+  }
+
+  return { kind: "text", text: content }
+}
+
+const mergeStyles = (stack: StyleFrame[]): ScreenStyle =>
+  stack.reduce<ScreenStyle>((merged, frame) => ({ ...merged, ...frame }), emptyStyle())
+
+const stylesEqual = (left: ScreenStyle, right: ScreenStyle) =>
+  left.bold === right.bold &&
+  left.italic === right.italic &&
+  left.underline === right.underline &&
+  left.strike === right.strike &&
+  left.foreground === right.foreground &&
+  left.background === right.background &&
+  left.href === right.href
+
+const appendText = (lines: RichTextLine[], stack: StyleFrame[], text: string) => {
+  const parts = text.split("\n")
+
+  parts.forEach((part, index) => {
+    if (index > 0) {
+      lines.push([])
+    }
+
+    if (!part) {
+      return
+    }
+
+    const style = mergeStyles(stack)
+    const currentLine = lines[lines.length - 1]
+    const previous = currentLine[currentLine.length - 1]
+
+    if (previous && stylesEqual(previous.style, style)) {
+      previous.text += part
+      return
+    }
+
+    currentLine.push({ text: part, style })
+  })
+}
+
+const appendRuns = (line: RichTextLine, runs: RichTextLine) => {
+  for (const run of runs) {
+    const previous = line[line.length - 1]
+
+    if (previous && stylesEqual(previous.style, run.style)) {
+      previous.text += run.text
+      continue
+    }
+
+    line.push({ text: run.text, style: { ...run.style } })
+  }
+}
+
+const attrGet = (token: Token, name: string) => token.attrGet(name) ?? undefined
+
+const consumeInlineToken = (
+  lines: RichTextLine[],
+  stack: StyleFrame[],
+  token: Token,
+) => {
+  switch (token.type) {
+    case "text":
+    case "code_inline":
+      appendText(lines, stack, token.content)
+      return
+    case "softbreak":
+    case "hardbreak":
+      appendText(lines, stack, "\n")
+      return
+    case "strong_open":
+      stack.push({ bold: true })
+      return
+    case "strong_close":
+      stack.pop()
+      return
+    case "em_open":
+      stack.push({ italic: true })
+      return
+    case "em_close":
+      stack.pop()
+      return
+    case "s_open":
+      stack.push({ strike: true })
+      return
+    case "s_close":
+      stack.pop()
+      return
+    case "link_open":
+      stack.push({ href: attrGet(token, "href") })
+      return
+    case "link_close":
+      stack.pop()
+      return
+    case "html_inline": {
+      const htmlToken = parseHtmlInlineToken(token.content)
+
+      if (htmlToken.kind === "open") {
+        stack.push(htmlToken.frame)
+        return
+      }
+
+      if (htmlToken.kind === "close") {
+        stack.pop()
+        return
+      }
+
+      appendText(lines, stack, htmlToken.text)
+      return
+    }
+    default:
+      if (token.content) {
+        appendText(lines, stack, token.content)
+      }
+  }
+}
+
+const consumeInlineTokens = (
+  lines: RichTextLine[],
+  stack: StyleFrame[],
+  tokens: Token[],
+) => {
+  for (const token of tokens) {
+    consumeInlineToken(lines, stack, token)
+  }
+}
+
+const inlineTokenToRuns = (token: Token, frames: StyleFrame[] = []): RichTextLine => {
+  const lines: RichTextLine[] = [[]]
+  const stack = frames.map((frame) => ({ ...frame }))
+
+  if (token.children) {
+    consumeInlineTokens(lines, stack, token.children)
+  }
+
+  return lines[0]
+}
+
+const visibleText = (runs: RichTextLine) => runs.map((run) => run.text).join("")
+const visibleWidth = (runs: RichTextLine) => getTextDisplayWidth(visibleText(runs))
+
+const withHeaderStyle = (runs: RichTextLine): RichTextLine =>
+  runs.map((run) => ({
+    text: run.text,
+    style: {
+      ...run.style,
+      bold: true,
+    },
+  }))
+
+const appendPlainRun = (line: RichTextLine, text: string) => {
+  if (!text) {
+    return
+  }
+
+  line.push({ text, style: emptyStyle() })
+}
+
+const tableToLines = (rows: TableRow[]): RichTextLine[] => {
+  const columnCount = Math.max(0, ...rows.map((row) => row.length))
+  const columnWidths = Array.from({ length: columnCount }, (_, columnIndex) =>
+    Math.max(0, ...rows.map((row) => visibleWidth(row[columnIndex]?.runs ?? []))),
+  )
+
+  return rows.map((row) => {
+    const line: RichTextLine = []
+
+    for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+      if (columnIndex > 0) {
+        appendPlainRun(line, " ".repeat(tableColumnGap))
+      }
+
+      const cell = row[columnIndex]
+      const runs = cell?.header ? withHeaderStyle(cell.runs) : cell?.runs ?? []
+      appendRuns(line, runs)
+
+      if (columnIndex < columnCount - 1) {
+        appendPlainRun(line, " ".repeat(columnWidths[columnIndex] - visibleWidth(runs)))
+      }
+    }
+
+    return line
+  })
+}
+
+const parseTable = (tokens: Token[], startIndex: number) => {
+  const rows: TableRow[] = []
+  let currentRow: TableRow | undefined
+  let currentCell: TableCell | undefined
+  let endIndex = startIndex
+
+  for (let index = startIndex + 1; index < tokens.length; index += 1) {
+    const token = tokens[index]
+
+    if (token.type === "table_close") {
+      endIndex = index
+      break
+    }
+
+    if (token.type === "tr_open") {
+      currentRow = []
+      continue
+    }
+
+    if (token.type === "tr_close") {
+      if (currentRow) {
+        rows.push(currentRow)
+      }
+      currentRow = undefined
+      continue
+    }
+
+    if (token.type === "th_open" || token.type === "td_open") {
+      currentCell = { runs: [], header: token.type === "th_open" }
+      continue
+    }
+
+    if (token.type === "th_close" || token.type === "td_close") {
+      if (currentRow && currentCell) {
+        currentRow.push(currentCell)
+      }
+      currentCell = undefined
+      continue
+    }
+
+    if (token.type === "inline" && currentCell) {
+      currentCell.runs = inlineTokenToRuns(token)
+    }
+  }
+
+  return {
+    endIndex,
+    lines: tableToLines(rows),
+  }
+}
+
+const tableSeparatorPattern = /^\s*\|?(?:\s*:?-{3,}:?\s*\|)+\s*:?-{3,}:?\s*\|?\s*$/
+const tableRowPattern = /^\s*\|.*\|\s*$/
+
+const isTableStart = (lines: string[], index: number) =>
+  tableRowPattern.test(lines[index] ?? "") && tableSeparatorPattern.test(lines[index + 1] ?? "")
+
+const findTableEnd = (lines: string[], startIndex: number) => {
+  let endIndex = startIndex + 2
+
+  while (endIndex < lines.length && tableRowPattern.test(lines[endIndex])) {
+    endIndex += 1
+  }
+
+  return endIndex
+}
+
+const parseInlineLine = (line: string): RichTextLine => {
+  const tokens: Token[] = []
+  markdown.inline.parse(line, markdown, {}, tokens)
+
+  const parsedLines: RichTextLine[] = [[]]
+  const stack: StyleFrame[] = []
+  consumeInlineTokens(parsedLines, stack, tokens)
+
+  return parsedLines[0] ?? []
+}
+
+const parseTableBlock = (block: string) => {
+  const tokens = markdown.parse(block, {})
+  const tableOpenIndex = tokens.findIndex((token) => token.type === "table_open")
+
+  if (tableOpenIndex === -1) {
+    return block.split("\n").map(parseInlineLine)
+  }
+
+  return parseTable(tokens, tableOpenIndex).lines
+}
+
+export const parseMarkdownToScreenLines = (content: string): ScreenLine[] => {
+  const normalizedContent = normalizeMarkdownPromptLinks(content)
+  const sourceLines = normalizedContent.split(/\r?\n/)
+  const lines: RichTextLine[] = []
+
+  for (let index = 0; index < sourceLines.length; index += 1) {
+    if (isTableStart(sourceLines, index)) {
+      const tableEnd = findTableEnd(sourceLines, index)
+      lines.push(...parseTableBlock(sourceLines.slice(index, tableEnd).join("\n")))
+      index = tableEnd - 1
+      continue
+    }
+
+    lines.push(parseInlineLine(sourceLines[index]))
+  }
+
+  return lines.length > 0 ? lines : [[]]
+}
+

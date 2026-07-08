@@ -3,6 +3,8 @@ export { LlmConfigPanel } from "@/components/llm/llm-config-panel"
 export { pendingOutput } from "@/components/llm/llm-sample-output"
 export type {
   LlmConfigDraft,
+  LlmRequestTrigger,
+  LlmTurnDebug,
   LlmThreadSummary,
   LlmTurnFrame,
   ServerInitialScreen,

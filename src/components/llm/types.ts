@@ -1,3 +1,49 @@
+export type LlmRequestTrigger = "input" | "prompt_href"
+
+export interface LlmTurnDebug {
+  lastCompletionLength?: number
+  finalCompletionLength?: number
+  request?: {
+    requestId: string
+    threadId: string
+    frameId: string
+    trigger: LlmRequestTrigger
+    promptLength: number
+    actionPromptLength: number
+    sourceContentLength: number
+    systemPromptLength: number
+    baseURL: string
+    model: string
+    hasServerApiKey: boolean
+    createdAt: number
+  }
+  stream?: {
+    startedAt: number
+    firstChunkAt?: number
+    lastChunkAt?: number
+    finishedAt?: number
+    chunkCount: number
+    lastDeltaLength: number
+    totalLength: number
+    outcome?: "complete" | "error" | "stopped"
+    errorMessage?: string
+  }
+  interaction?: {
+    href: string
+    kind: "prompt"
+    prompt: string
+    triggeredRequest: boolean
+    at: number
+  }
+  persistence?: {
+    lastEventType?: SessionEvent["type"]
+    lastPersistedLength?: number
+    pendingLength?: number
+    lastPersistedAt?: number
+    lastPersistError?: string
+  }
+}
+
 export interface LlmTurnFrame {
   id: string
   title: string
@@ -6,10 +52,7 @@ export interface LlmTurnFrame {
   rawFinalContent?: string
   sourceContent?: string
   actionPrompt?: string
-  debug?: {
-    lastCompletionLength?: number
-    finalCompletionLength?: number
-  }
+  debug?: LlmTurnDebug
   createdAt: number
   status: "streaming" | "complete" | "error" | "stopped"
 }
