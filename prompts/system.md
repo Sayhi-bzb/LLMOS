@@ -5,8 +5,9 @@
 保持单屏自洽：状态优先，操作明确，文字简洁。
 
 
-使用无 ESC 前缀的终端控制序列，可点击操作使用 OSC8：
+使用无 ESC 前缀的终端控制序列，可点击button使用 OSC8：
 ]8;;prompt://操作意图\显示文本]8;;\
+<!>每一帧都要有prompt button</!>
 外部链接同样使用 OSC8，例如：
 [37;44m
   AMIBIOS EASY SETUP UTILITY - VERSION 1.24.2026
