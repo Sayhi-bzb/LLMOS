@@ -325,6 +325,10 @@ export function LlmDebugPanel({
               <DebugMetric label="baseURL" value={frame.debug?.request?.baseURL || configDraft.baseURL} />
               <DebugMetric label="model" value={frame.debug?.request?.model || configDraft.model || "n/a"} />
               <DebugMetric
+                label="temperature"
+                value={frame.debug?.request?.temperature ?? configDraft.temperature}
+              />
+              <DebugMetric
                 label="hasServerApiKey"
                 value={String(frame.debug?.request?.hasServerApiKey ?? hasServerApiKey)}
               />

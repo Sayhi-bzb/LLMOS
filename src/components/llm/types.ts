@@ -14,6 +14,7 @@ export interface LlmTurnDebug {
     systemPromptLength: number
     baseURL: string
     model: string
+    temperature: number
     hasServerApiKey: boolean
     createdAt: number
   }
@@ -68,6 +69,7 @@ export interface LlmThreadSummary {
 export interface ServerLlmConfig {
   baseURL: string
   model: string
+  temperature: number
   hasApiKey: boolean
 }
 
@@ -116,4 +118,5 @@ export interface LlmConfigDraft {
   baseURL: string
   apiKey: string
   model: string
+  temperature: string
 }

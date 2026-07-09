@@ -17,6 +17,7 @@ import type {
 } from "@/components/llm"
 
 const defaultLiteLLMBaseURL = "http://localhost:4000/v1"
+const defaultLiteLLMTemperature = "0.7"
 const sessionDeltaThrottleMs = 500
 const pendingSpinnerIntervalMs = 140
 const pendingSpinnerFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
@@ -25,6 +26,7 @@ const emptyConfigDraft: LlmConfigDraft = {
   baseURL: defaultLiteLLMBaseURL,
   apiKey: "",
   model: "",
+  temperature: defaultLiteLLMTemperature,
 }
 
 const createFrameId = () => {
@@ -57,6 +59,12 @@ const getFrameTitle = (prompt: string) => {
 
 const sortThreads = (threads: LlmThreadSummary[]) =>
   [...threads].sort((a, b) => b.updatedAt - a.updatedAt)
+
+const parseTemperatureDraft = (value: string) => {
+  const temperature = Number(value)
+
+  return Number.isFinite(temperature) ? temperature : Number(defaultLiteLLMTemperature)
+}
 
 const summarizeFrames = (threadId: string, frames: LlmTurnFrame[]): LlmThreadSummary => {
   const firstFrame = frames[0]
@@ -194,6 +202,7 @@ function App() {
       systemPromptLength: resolvedSystemPrompt.trim().length,
       baseURL: configDraft.baseURL,
       model: configDraft.model,
+      temperature: parseTemperatureDraft(configDraft.temperature),
       hasServerApiKey,
       createdAt: Date.now(),
     },
@@ -561,6 +570,7 @@ function App() {
           baseURL: data.baseURL || defaultLiteLLMBaseURL,
           apiKey: "",
           model: data.model || "",
+          temperature: String(data.temperature ?? defaultLiteLLMTemperature),
         })
         setHasServerApiKey(data.hasApiKey)
         setConfigStatus(data.hasApiKey ? "Key saved on server" : "Missing key")
@@ -830,6 +840,7 @@ function App() {
         baseURL: data.baseURL || configDraft.baseURL || defaultLiteLLMBaseURL,
         apiKey: "",
         model: data.model || configDraft.model,
+        temperature: String(data.temperature ?? configDraft.temperature),
       })
       setHasServerApiKey(Boolean(data.hasApiKey))
       setConfigStatus("Saved to .env.local")

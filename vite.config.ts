@@ -15,8 +15,14 @@ const legacySessionApiPath = "/api/session"
 const legacySessionEventApiPath = "/api/session/event"
 const threadsApiPath = "/api/threads"
 const defaultLiteLLMBaseURL = "http://localhost:4000/v1"
+const defaultLiteLLMTemperature = 0.7
 const legacyThreadId = "current"
-const managedEnvKeys = ["LITELLM_BASE_URL", "LITELLM_API_KEY", "LITELLM_MODEL"] as const
+const managedEnvKeys = [
+  "LITELLM_BASE_URL",
+  "LITELLM_API_KEY",
+  "LITELLM_MODEL",
+  "LITELLM_TEMPERATURE",
+] as const
 
 interface CompletionRequestBody {
   prompt?: unknown
@@ -27,6 +33,7 @@ interface LlmConfigRequestBody {
   baseURL?: unknown
   apiKey?: unknown
   model?: unknown
+  temperature?: unknown
 }
 
 interface SystemPromptRequestBody {
@@ -37,6 +44,7 @@ interface LiteLLMServerConfig {
   baseURL: string
   apiKey?: string
   model?: string
+  temperature: number
 }
 
 type MiddlewareServer = {
@@ -77,6 +85,18 @@ const sendJson = (
 
 const asTrimmedString = (value: unknown) =>
   typeof value === "string" ? value.trim() : ""
+
+const asTemperature = (value: unknown) => {
+  if (typeof value !== "string" && typeof value !== "number") {
+    return null
+  }
+
+  const temperature = Number(value)
+
+  return Number.isFinite(temperature) && temperature >= 0 && temperature <= 2
+    ? temperature
+    : null
+}
 
 const casesPlaceholder = "{cases}"
 
@@ -495,6 +515,7 @@ const llmCompletionPlugin = (initialConfig: LiteLLMServerConfig): Plugin => {
       const result = streamText({
         model: litellm(runtimeConfig.model),
         prompt,
+        temperature: runtimeConfig.temperature,
         ...(systemPrompt ? { system: systemPrompt } : {}),
       })
 
@@ -513,6 +534,7 @@ const llmCompletionPlugin = (initialConfig: LiteLLMServerConfig): Plugin => {
       sendJson(res, 200, {
         baseURL: runtimeConfig.baseURL,
         model: runtimeConfig.model ?? "",
+        temperature: runtimeConfig.temperature,
         hasApiKey: Boolean(runtimeConfig.apiKey),
       })
       return
@@ -528,19 +550,27 @@ const llmCompletionPlugin = (initialConfig: LiteLLMServerConfig): Plugin => {
       const baseURL = asTrimmedString(body.baseURL) || defaultLiteLLMBaseURL
       const model = asTrimmedString(body.model)
       const apiKey = asTrimmedString(body.apiKey)
+      const temperature = asTemperature(body.temperature)
 
       if (!model) {
         sendJson(res, 400, { error: "Model is required." })
         return
       }
 
+      if (temperature === null) {
+        sendJson(res, 400, { error: "Temperature must be a number from 0 to 2." })
+        return
+      }
+
       const envUpdates: Partial<Record<(typeof managedEnvKeys)[number], string>> = {
         LITELLM_BASE_URL: baseURL,
         LITELLM_MODEL: model,
+        LITELLM_TEMPERATURE: String(temperature),
       }
 
       runtimeConfig.baseURL = baseURL
       runtimeConfig.model = model
+      runtimeConfig.temperature = temperature
 
       if (apiKey) {
         envUpdates.LITELLM_API_KEY = apiKey
@@ -551,6 +581,7 @@ const llmCompletionPlugin = (initialConfig: LiteLLMServerConfig): Plugin => {
       sendJson(res, 200, {
         baseURL: runtimeConfig.baseURL,
         model: runtimeConfig.model,
+        temperature: runtimeConfig.temperature,
         hasApiKey: Boolean(runtimeConfig.apiKey),
       })
     } catch (error) {
@@ -869,6 +900,9 @@ export default defineConfig(({ mode }) => {
           defaultLiteLLMBaseURL,
         apiKey: process.env.LITELLM_API_KEY || env.LITELLM_API_KEY,
         model: process.env.LITELLM_MODEL || env.LITELLM_MODEL,
+        temperature:
+          asTemperature(process.env.LITELLM_TEMPERATURE || env.LITELLM_TEMPERATURE) ??
+          defaultLiteLLMTemperature,
       }),
     ],
     resolve: {

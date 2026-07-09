@@ -17,6 +17,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Slider } from "@/components/ui/slider"
 import {
   Tooltip,
   TooltipContent,
@@ -50,6 +51,12 @@ export function LlmConfigPanel({
   onConfigChange,
   onSave,
 }: LlmConfigPanelProps) {
+  const parsedTemperature = Number(configDraft.temperature)
+  const temperature = Number.isFinite(parsedTemperature)
+    ? Math.min(2, Math.max(0, parsedTemperature))
+    : 0.7
+  const temperatureLabel = temperature.toFixed(1)
+
   return (
     <Dialog open={configOpen} onOpenChange={onOpenChange}>
       <TooltipProvider>
@@ -74,7 +81,7 @@ export function LlmConfigPanel({
         <DialogHeader>
           <DialogTitle>LiteLLM env</DialogTitle>
           <DialogDescription>
-            Saves URL, key, and model to .env.local. {configStatus}
+            Saves URL, key, model, and temperature to .env.local. {configStatus}
           </DialogDescription>
         </DialogHeader>
 
@@ -108,6 +115,28 @@ export function LlmConfigPanel({
               type="password"
               value={configDraft.apiKey}
             />
+          </Field>
+
+          <Field>
+            <div className="flex items-center justify-between gap-3">
+              <FieldLabel htmlFor="llm-temperature">Temperature</FieldLabel>
+              <span className="font-mono text-xs text-muted-foreground">
+                {temperatureLabel}
+              </span>
+            </div>
+            <Slider
+              id="llm-temperature"
+              max={2}
+              min={0}
+              onValueChange={(value) =>
+                onConfigChange("temperature", (value[0] ?? temperature).toFixed(1))
+              }
+              step={0.1}
+              value={[temperature]}
+            />
+            <p className="text-xs text-muted-foreground">
+              Lower is stable, higher is creative.
+            </p>
           </Field>
 
           <FieldError>{configError}</FieldError>
