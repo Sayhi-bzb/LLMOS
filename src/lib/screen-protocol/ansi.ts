@@ -117,6 +117,22 @@ const canvasDecorationsToScreenStyle = (
   ...(decorations.includes("hidden") ? { hidden: true } : {}),
 })
 
+const anserDecorationsToScreenStyle = (
+  decorations?: string[],
+): Pick<
+  ScreenStyle,
+  "bold" | "dim" | "italic" | "underline" | "strike" | "blink" | "reverse" | "hidden"
+> => ({
+  ...(decorations?.includes("bold") ? { bold: true } : {}),
+  ...(decorations?.includes("dim") ? { dim: true } : {}),
+  ...(decorations?.includes("italic") ? { italic: true } : {}),
+  ...(decorations?.includes("underline") ? { underline: true } : {}),
+  ...(decorations?.includes("strikethrough") ? { strike: true } : {}),
+  ...(decorations?.includes("blink") ? { blink: true } : {}),
+  ...(decorations?.includes("reverse") ? { reverse: true } : {}),
+  ...(decorations?.includes("hidden") ? { hidden: true } : {}),
+})
+
 const canvasLinesToScreenLines = (lines: CanvasLine[]): ScreenLine[] =>
   lines.map((line) =>
     line.map((run) => ({
@@ -152,6 +168,36 @@ const parseLeadingSgrToken = (content: string) => {
   return /^[\d;]+$/.test(body) ? `\x1b[${body}m` : undefined
 }
 
+const parseLeadingLineSgrToken = (content: string) => {
+  const leadingWhitespaceLength = content.length - content.trimStart().length
+
+  return parseLeadingSgrToken(content.slice(leadingWhitespaceLength))
+}
+
+const sgrTokenToStyle = (token: string): ScreenStyle | undefined => {
+  const [entry] = Anser.ansiToJson(`${token}x`, {
+    remove_empty: true,
+    use_classes: true,
+  })
+  const foreground = resolveAnsiColor(entry?.fg, entry?.fg_truecolor)
+  const background = resolveAnsiColor(entry?.bg, entry?.bg_truecolor)
+  const decorations = anserDecorationsToScreenStyle(entry?.decorations)
+
+  return foreground || background || Object.keys(decorations).length > 0
+    ? {
+        ...(foreground ? { foreground } : {}),
+        ...(background ? { background } : {}),
+        ...decorations,
+      }
+    : undefined
+}
+
+const sgrTokenToFillStyle = (token: string): ScreenStyle | undefined => {
+  const style = sgrTokenToStyle(token)
+
+  return style?.background ? style : undefined
+}
+
 const getFrameFillStyle = (content: string): ScreenStyle | undefined => {
   const token = parseLeadingSgrToken(content)
 
@@ -159,17 +205,40 @@ const getFrameFillStyle = (content: string): ScreenStyle | undefined => {
     return undefined
   }
 
-  const [entry] = Anser.ansiToJson(`${token}x`, {
-    remove_empty: true,
-    use_classes: true,
-  })
-  const foreground = resolveAnsiColor(entry?.fg, entry?.fg_truecolor)
-  const background = resolveAnsiColor(entry?.bg, entry?.bg_truecolor)
+  const style = sgrTokenToFillStyle(token)
 
-  return foreground || background ? {
-    ...(foreground ? { foreground } : {}),
-    ...(background ? { background } : {}),
-  } : undefined
+  return style
+    ? {
+        ...(style.foreground ? { foreground: style.foreground } : {}),
+        ...(style.background ? { background: style.background } : {}),
+      }
+    : undefined
+}
+
+const getLineFillStyles = (content: string): Array<ScreenStyle | undefined> =>
+  content.split("\n").map((line) => {
+    const token = parseLeadingLineSgrToken(line)
+
+    if (!token) {
+      return undefined
+    }
+
+    return sgrTokenToFillStyle(token)
+  })
+
+const applyLineFillStyles = (
+  lines: ScreenLine[],
+  fillStyles: Array<ScreenStyle | undefined>,
+) => {
+  lines.forEach((line, index) => {
+    const fillStyle = fillStyles[index]
+
+    if (fillStyle) {
+      line.fillStyle = fillStyle
+    }
+  })
+
+  return lines
 }
 
 export const ansiProtocol: ScreenProtocol = {
@@ -178,10 +247,12 @@ export const ansiProtocol: ScreenProtocol = {
   stabilize: (content, options) => stabilizeAnsiStream(content, options?.streaming),
   parse: (content, options): ScreenFrame => {
     const stabilized = stabilizeAnsiStream(content, options?.streaming)
+    const stable = stabilized.stable
+    const lines = canvasLinesToScreenLines(parseAnsiToLines(stable))
 
     return {
-      lines: canvasLinesToScreenLines(parseAnsiToLines(stabilized.stable)),
-      fillStyle: getFrameFillStyle(stabilized.stable),
+      lines: applyLineFillStyles(lines, getLineFillStyles(stable)),
+      fillStyle: getFrameFillStyle(stable),
     }
   },
 }

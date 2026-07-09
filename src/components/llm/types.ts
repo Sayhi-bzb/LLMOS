@@ -73,6 +73,7 @@ export interface ServerLlmConfig {
 
 export interface ServerSystemPrompt {
   systemPrompt: string
+  resolvedSystemPrompt?: string
 }
 
 export interface ServerInitialScreen {

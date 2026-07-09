@@ -87,6 +87,7 @@ const persistThreadEvent = async (threadId: string, event: SessionEvent) => {
 
 function App() {
   const [savedSystemPrompt, setSavedSystemPrompt] = useState("")
+  const [resolvedSystemPrompt, setResolvedSystemPrompt] = useState("")
   const [systemPromptDraft, setSystemPromptDraft] = useState("")
   const [initialScreenContent, setInitialScreenContent] = useState("")
   const [configOpen, setConfigOpen] = useState(false)
@@ -190,7 +191,7 @@ function App() {
       promptLength: prompt.length,
       actionPromptLength: actionPrompt.length,
       sourceContentLength: sourceContent.length,
-      systemPromptLength: savedSystemPrompt.trim().length,
+      systemPromptLength: resolvedSystemPrompt.trim().length,
       baseURL: configDraft.baseURL,
       model: configDraft.model,
       hasServerApiKey,
@@ -472,6 +473,7 @@ function App() {
         }
 
         setSavedSystemPrompt(data.systemPrompt ?? "")
+        setResolvedSystemPrompt(data.resolvedSystemPrompt ?? data.systemPrompt ?? "")
         setSystemPromptDraft(data.systemPrompt ?? "")
       } catch (loadError) {
         if (!ignore) {
@@ -795,6 +797,7 @@ function App() {
       }
 
       setSavedSystemPrompt(data.systemPrompt ?? systemPromptDraft)
+      setResolvedSystemPrompt(data.resolvedSystemPrompt ?? data.systemPrompt ?? systemPromptDraft)
     } catch (saveError) {
       console.error(saveError)
     } finally {
@@ -915,7 +918,7 @@ function App() {
       void enqueueThreadEvent(threadId, { type: "frame_started", frame: nextFrame })
       void complete(nextPrompt, {
         body: {
-          systemPrompt: savedSystemPrompt.trim(),
+          systemPrompt: resolvedSystemPrompt.trim(),
         },
       })
     } catch (submitError) {

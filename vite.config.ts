@@ -78,6 +78,30 @@ const sendJson = (
 const asTrimmedString = (value: unknown) =>
   typeof value === "string" ? value.trim() : ""
 
+const casesPlaceholder = "{cases}"
+
+const readTextFileOrEmpty = async (filePath: string) => {
+  try {
+    return await fs.readFile(filePath, "utf8")
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return ""
+    }
+
+    throw error
+  }
+}
+
+const resolveSystemPrompt = (systemPrompt: string, casesPrompt: string) => {
+  const trimmedCases = casesPrompt.trim()
+
+  if (systemPrompt.includes(casesPlaceholder)) {
+    return systemPrompt.replaceAll(casesPlaceholder, trimmedCases)
+  }
+
+  return [systemPrompt.trimEnd(), trimmedCases].filter(Boolean).join("\n\n")
+}
+
 const isFrameStatus = (value: unknown): value is LlmTurnFrame["status"] =>
   value === "streaming" || value === "complete" || value === "error" || value === "stopped"
 
@@ -432,6 +456,7 @@ const llmCompletionPlugin = (initialConfig: LiteLLMServerConfig): Plugin => {
   const runtimeConfig: LiteLLMServerConfig = { ...initialConfig }
   const envLocalPath = path.resolve(process.cwd(), ".env.local")
   const systemPromptPath = path.resolve(process.cwd(), "prompts/system.md")
+  const casesPromptPath = path.resolve(process.cwd(), "prompts/cases.md")
   const initialScreenPath = path.resolve(process.cwd(), "prompts/initial-screen.md")
   const sessionsDir = path.resolve(process.cwd(), "sessions")
   const legacySessionPath = getThreadPath(sessionsDir, legacyThreadId)
@@ -563,14 +588,16 @@ const llmCompletionPlugin = (initialConfig: LiteLLMServerConfig): Plugin => {
   ) => {
     if (req.method === "GET") {
       try {
-        const systemPrompt = await fs.readFile(systemPromptPath, "utf8")
-        sendJson(res, 200, { systemPrompt })
-      } catch (error) {
-        if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-          sendJson(res, 200, { systemPrompt: "" })
-          return
-        }
+        const [systemPrompt, casesPrompt] = await Promise.all([
+          readTextFileOrEmpty(systemPromptPath),
+          readTextFileOrEmpty(casesPromptPath),
+        ])
 
+        sendJson(res, 200, {
+          systemPrompt,
+          resolvedSystemPrompt: resolveSystemPrompt(systemPrompt, casesPrompt),
+        })
+      } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown error"
         sendJson(res, 500, { error: message })
       }
@@ -588,7 +615,11 @@ const llmCompletionPlugin = (initialConfig: LiteLLMServerConfig): Plugin => {
 
       await fs.mkdir(path.dirname(systemPromptPath), { recursive: true })
       await fs.writeFile(systemPromptPath, systemPrompt, "utf8")
-      sendJson(res, 200, { systemPrompt })
+      const casesPrompt = await readTextFileOrEmpty(casesPromptPath)
+      sendJson(res, 200, {
+        systemPrompt,
+        resolvedSystemPrompt: resolveSystemPrompt(systemPrompt, casesPrompt),
+      })
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error"
       sendJson(res, 500, { error: message })

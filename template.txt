@@ -1,17 +1,15 @@
-[37;44m
-  AMIBIOS EASY SETUP UTILITY - VERSION 1.24.2026
+```案例 2:Macos
+󰀵 Finder  File  Edit  View  Go  Window  Help     󰁹 100%  11:45 AM
 
-  Main     ]8;;prompt://打开 Advanced 设置\[7m Advanced ]8;;\[27m    Power    Boot    Security    Exit
+     [37;40m [31m●[37m [33m●[37m [32m●[37m                  Finder                     [0m
+     [37;40m                                                   [0m
+     [37;40m  󰉋 Favorites       Name       Size    Kind        [0m
+     [37;40m  󰋜 Desktop         Notes.txt  2 KB    Text        [0m
+     [37;40m  󰉋 Downloads       Projects   --      Folder      [0m
+     [37;40m  󰉍 Documents       Image.png  1.2 MB  PNG         [0m
+     [37;40m  󰓓 Applications                                   [0m
+     [37;40m                                                   [0m
+     [37;40m                                                   [0m
 
- ]8;;prompt://打开 CPU Configuration\[7m > CPU Configuration ]8;;\[27m           Item Specific Help
-    ]8;;prompt://打开 Chipset Configuration\Chipset Configuration]8;;\
-    ]8;;prompt://打开 Onboard Devices Configuration\Onboard Devices Conf.]8;;\        Configure CPU settings
-    ]8;;prompt://打开 USB Configuration\USB Configuration]8;;\            and features.
-
-    CPU Settings
-      Hyper-Threading: [En]
-      Intel VT-x:      [En]
-
-
-  F1:Help   ↑↓:Select   +/-:Change   F5:Default   F10:Exit
-[0m
+                 [37;40m   󰀵  󰈹  󰉋  󰓓  󰄵  󰅍   [0m
+```
