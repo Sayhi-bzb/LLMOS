@@ -5,10 +5,17 @@ import type { CanvasCell } from "@/lib/canvas-text"
 import {
   cellsToRuns,
   classifyOscField,
-  getCanvasStyle,
+  getCanvasBackgroundColor,
+  getCanvasTextStyle,
   getStyleKey,
 } from "@/components/ascii-canvas/ansi-style"
 import type { RowSelectionRange, TextMetrics } from "@/components/ascii-canvas/types"
+
+interface BackgroundRun {
+  color: string
+  startCol: number
+  length: number
+}
 
 interface AsciiGridProps {
   grid: CanvasCell[][]
@@ -17,6 +24,29 @@ interface AsciiGridProps {
   rows: number
   selectionRanges: RowSelectionRange[]
   onLinkClick: (event: MouseEvent<HTMLAnchorElement>) => void
+}
+
+function cellsToBackgroundRuns(cells: CanvasCell[]): BackgroundRun[] {
+  const runs: BackgroundRun[] = []
+
+  for (const [index, cell] of cells.entries()) {
+    const color = getCanvasBackgroundColor(cell.style)
+
+    if (!color) {
+      continue
+    }
+
+    const previous = runs[runs.length - 1]
+
+    if (previous && previous.color === color && previous.startCol + previous.length === index) {
+      previous.length += 1
+      continue
+    }
+
+    runs.push({ color, startCol: index, length: 1 })
+  }
+
+  return runs
 }
 
 export function AsciiGrid({
@@ -35,6 +65,24 @@ export function AsciiGrid({
         width: gridCols * metrics.charWidth,
       }}
     >
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0">
+        {grid.map((row, rowIndex) =>
+          cellsToBackgroundRuns(row).map((run) => (
+            <div
+              className="absolute"
+              key={`${rowIndex}-${run.startCol}-${run.length}-${run.color}`}
+              style={{
+                backgroundColor: run.color,
+                height: metrics.lineHeight,
+                left: run.startCol * metrics.charWidth,
+                top: rowIndex * metrics.lineHeight,
+                width: run.length * metrics.charWidth,
+              }}
+            />
+          )),
+        )}
+      </div>
+
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-20">
         {selectionRanges.map((range) => (
           <div
@@ -63,7 +111,7 @@ export function AsciiGrid({
           >
             {cellsToRuns(row).map((run) => {
               const key = `${rowIndex}-${run.startCol}-${getStyleKey(run.style)}`
-              const style = getCanvasStyle(run.style)
+              const style = getCanvasTextStyle(run.style)
 
               if (!run.style.label) {
                 return (

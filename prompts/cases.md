@@ -19,19 +19,17 @@
 ---
 
 ```案例 2:Macos
-[30;47m󰀵 ]8;;prompt://打开 Finder 菜单\Finder]8;;\  ]8;;prompt://打开 File 菜单\File]8;;\  ]8;;prompt://打开 Edit 菜单\Edit]8;;\  ]8;;prompt://打开 View 菜单\View]8;;\  ]8;;prompt://打开 Go 菜单\Go]8;;\  ]8;;prompt://打开 Window 菜单\Window]8;;\  ]8;;prompt://打开 Help 菜单\Help]8;;\       󰁹 100%  11:45 AM[0m
+󰀵 ]8;;prompt://打开 Finder 菜单\[1mFinder[22m]8;;\  ]8;;prompt://打开 File 菜单\File]8;;\  ]8;;prompt://打开 Edit 菜单\Edit]8;;\  ]8;;prompt://打开 View 菜单\View]8;;\  ]8;;prompt://打开 Go 菜单\Go]8;;\  ]8;;prompt://打开 Window 菜单\Window]8;;\  ]8;;prompt://打开 Help 菜单\Help]8;;\       󰁹 100%  11:45 AM
 
-     [30;47m [31m●[30m [33m●[30m [32m●[30m                  [1mFinder[22m                     [0m
-     [30;47m                                                   [0m
-     [30;47m  󰉋 Favorites       Name       Size    Kind        [0m
-     [30;47m  󰋜 ]8;;prompt://打开桌面\[7m Desktop [27m]8;;\       ]8;;prompt://打开 Notes.txt\Notes.txt]8;;\  2 KB    Text        [0m
-     [30;47m  󰉋 ]8;;prompt://打开下载目录\Downloads]8;;\       ]8;;prompt://打开 Projects 文件夹\Projects]8;;\   --      Folder      [0m
-     [30;47m  󰉍 ]8;;prompt://打开文档目录\Documents]8;;\       ]8;;prompt://打开 Image.png\Image.png]8;;\  1.2 MB  PNG         [0m
-     [30;47m  󰓓 ]8;;prompt://打开应用程序\Applications]8;;\                                   [0m
-     [30;47m                                                   [0m
-     [30;47m                                                   [0m
+     [31m●[39m [33m●[39m [32m●[39m                  [1mFinder[22m
 
-                 [30;47m   ]8;;prompt://打开 Finder\[7m 󰀵 [27m]8;;\  ]8;;prompt://打开浏览器\󰈹]8;;\  ]8;;prompt://打开文件管理器\󰉋]8;;\  ]8;;prompt://打开应用程序\󰓓]8;;\  ]8;;prompt://打开系统设置\󰄵]8;;\  ]8;;prompt://打开终端\󰅍]8;;\   [0m
+      󰉋 Favorites       Name       Size    Kind
+      󰋜 ]8;;prompt://打开桌面\[1mDesktop[22m]8;;\         ]8;;prompt://打开 Notes.txt\Notes.txt]8;;\  2 KB    Text
+      󰉋 ]8;;prompt://打开下载目录\Downloads]8;;\       ]8;;prompt://打开 Projects 文件夹\Projects]8;;\   --      Folder
+      󰉍 ]8;;prompt://打开文档目录\Documents]8;;\       ]8;;prompt://打开 Image.png\Image.png]8;;\  1.2 MB  PNG
+      󰓓 ]8;;prompt://打开应用程序\Applications]8;;\
+
+                 ]8;;prompt://打开 Finder\[1m󰀵[22m]8;;\  ]8;;prompt://打开浏览器\󰈹]8;;\  ]8;;prompt://打开文件管理器\󰉋]8;;\  ]8;;prompt://打开应用程序\󰓓]8;;\  ]8;;prompt://打开系统设置\󰄵]8;;\  ]8;;prompt://打开终端\󰅍]8;;\
 ```
 
 ---

@@ -35,19 +35,19 @@ export function cellsToRuns(cells: CanvasCell[]): CellRun[] {
   return runs
 }
 
-export function getCanvasStyle(style: CanvasStyle): CSSProperties {
+export function getCanvasTextStyle(style: CanvasStyle): CSSProperties {
   const decorations = new Set(style.decorations)
   const isReverse = decorations.has("reverse")
   const color = isReverse ? style.background : style.foreground
-  const backgroundColor = isReverse ? style.foreground : style.background
 
   return {
     display: "inline-block",
     height: "100%",
     lineHeight: "inherit",
     verticalAlign: "top",
+    position: "relative",
+    zIndex: 1,
     ...(color ? { color } : {}),
-    ...(backgroundColor ? { backgroundColor } : {}),
     fontWeight: decorations.has("bold") ? 700 : undefined,
     fontStyle: decorations.has("italic") ? "italic" : undefined,
     opacity: decorations.has("dim") ? 0.72 : undefined,
@@ -59,6 +59,12 @@ export function getCanvasStyle(style: CanvasStyle): CSSProperties {
       .join(" "),
     visibility: decorations.has("hidden") ? "hidden" : undefined,
   }
+}
+
+export function getCanvasBackgroundColor(style: CanvasStyle) {
+  const decorations = new Set(style.decorations)
+
+  return decorations.has("reverse") ? style.foreground : style.background
 }
 
 export function classifyOscField(value: string): OscFieldKind {
